@@ -35,22 +35,14 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 
 ## Screenshots
 
-> Add your screenshots to a `docs/screenshots/` folder and update the paths below.
-
 ### Login
 ![Login Screen](docs/screenshots/login.png)
 
 ### Dashboard
 ![Dashboard](docs/screenshots/dashboard.png)
 
-### New Bill — Cashier Screen
-![New Bill](docs/screenshots/new-bill.png)
-
 ### Customer Profile — Ledger & Prices
 ![Customer Profile](docs/screenshots/customer-profile.png)
-
-### Price History — Immutable Audit Log
-![Price History](docs/screenshots/price-history.png)
 
 ### Products
 ![Products](docs/screenshots/products.png)
