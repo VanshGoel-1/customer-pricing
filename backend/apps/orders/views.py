@@ -122,8 +122,11 @@ class OrderMarkPaidView(APIView):
                 {"success": False, "error": {"code": "not_found", "message": "Order not found."}},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        payment_mode = request.data.get("mode", Order.PAYMENT_MODE_CASH)
+        if payment_mode not in (Order.PAYMENT_MODE_CASH, Order.PAYMENT_MODE_ONLINE):
+            payment_mode = Order.PAYMENT_MODE_CASH
         try:
-            order.mark_paid()
+            order.mark_paid(payment_mode=payment_mode)
         except ValueError as e:
             return Response(
                 {"success": False, "error": {"code": "validation_error", "message": str(e)}},
@@ -194,6 +197,10 @@ class OrderRecordPaymentView(APIView):
                 {"success": False, "error": {"code": "validation_error", "message": f"Payment ({amount}) exceeds remaining balance ({order.remaining_balance})."}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        payment_mode = request.data.get("mode", Order.PAYMENT_MODE_CASH)
+        if payment_mode not in (Order.PAYMENT_MODE_CASH, Order.PAYMENT_MODE_ONLINE):
+            payment_mode = Order.PAYMENT_MODE_CASH
+
         from django.db import transaction as db_transaction
         with db_transaction.atomic():
             from apps.customers.models import CreditLedger
@@ -204,6 +211,17 @@ class OrderRecordPaymentView(APIView):
                 amount=amount,
                 order=order,
                 notes=f"Partial payment for {order.order_number}",
+            )
+            # Cashbook sync — record cash received from credit customer
+            from apps.cashbook.models import CashTransaction
+            CashTransaction.objects.create(
+                transaction_type=CashTransaction.TYPE_IN,
+                category="payment_received",
+                amount=amount,
+                mode=payment_mode,
+                transaction_date=datetime.date.today(),
+                description=f"Payment received for {order.order_number}",
+                order=order,
             )
             order.refresh_from_db()
             if order.remaining_balance <= 0:

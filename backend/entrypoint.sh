@@ -26,7 +26,7 @@ done
 echo "[entrypoint] PostgreSQL is ready."
 
 echo "[entrypoint] Creating migrations for custom apps..."
-python manage.py makemigrations core users products customers pricing orders --no-input
+python manage.py makemigrations core users products customers pricing orders cashbook --no-input
 
 echo "[entrypoint] Running migrations..."
 python manage.py migrate --no-input

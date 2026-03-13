@@ -13,6 +13,10 @@ Key Odoo patterns:
    auto-filled price — mirrors Odoo's price_unit override tracking.
 3. total_amount is auto-calculated from lines on save.
 4. Order number is auto-generated (ORD/2026/00001 format).
+
+Cashbook sync:
+  - payment_mode=cash/online on confirm() → CashTransaction IN (category='sale')
+  - mark_paid() / record_payment() → CashTransaction IN (category='payment_received')
 """
 import datetime
 from decimal import Decimal
@@ -46,7 +50,6 @@ def _generate_order_number():
             try:
                 seq = int(last.split("/")[-1]) + 1
             except (IndexError, ValueError):
-                # Malformed order_number in DB — fall back to count-based
                 seq = Order.objects.filter(order_number__startswith=f"ORD/{year}/").count() + 1
         else:
             seq = 1
@@ -54,34 +57,48 @@ def _generate_order_number():
 
 
 class Order(AuditModel):
-    STATUS_DRAFT = "draft"
+    STATUS_DRAFT     = "draft"
     STATUS_CONFIRMED = "confirmed"
-    STATUS_PAID = "paid"
+    STATUS_PAID      = "paid"
     STATUS_CANCELLED = "cancelled"
 
     STATUS_CHOICES = [
-        (STATUS_DRAFT, "Draft"),
+        (STATUS_DRAFT,     "Draft"),
         (STATUS_CONFIRMED, "Confirmed"),
-        (STATUS_PAID, "Paid"),
+        (STATUS_PAID,      "Paid"),
         (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    PAYMENT_MODE_CASH   = "cash"
+    PAYMENT_MODE_ONLINE = "online"
+    PAYMENT_MODE_CREDIT = "credit"
+    PAYMENT_MODE_CHOICES = [
+        (PAYMENT_MODE_CASH,   "Cash"),
+        (PAYMENT_MODE_ONLINE, "Online / UPI"),
+        (PAYMENT_MODE_CREDIT, "Credit"),
     ]
 
     order_number = models.CharField(max_length=50, unique=True, db_index=True)
     customer = models.ForeignKey(
         "customers.Customer",
-        on_delete=models.PROTECT,  # never lose order history if customer is archived
+        on_delete=models.PROTECT,
         related_name="orders",
     )
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT, db_index=True
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT, db_index=True,
+    )
+    payment_mode = models.CharField(
+        max_length=10,
+        choices=PAYMENT_MODE_CHOICES,
+        default=PAYMENT_MODE_CREDIT,
+        db_index=True,
     )
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     notes = models.TextField(blank=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
     confirmed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
         on_delete=models.SET_NULL,
         related_name="confirmed_orders",
     )
@@ -110,7 +127,10 @@ class Order(AuditModel):
     def confirm(self):
         """
         Confirm the order and post a credit ledger entry atomically.
-        Mirrors Odoo's action_confirm() + credit posting in one transaction.
+
+        If payment_mode is cash or online (i.e. immediate payment),
+        also creates a CashTransaction IN (category='sale') so the cashbook
+        reflects the revenue without a separate manual entry.
         """
         if self.status != self.STATUS_DRAFT:
             raise ValueError(f"Only draft orders can be confirmed. Current status: {self.status}")
@@ -119,12 +139,12 @@ class Order(AuditModel):
             raise ValueError("Cannot confirm an order with no items.")
 
         with transaction.atomic():
-            self.status = self.STATUS_CONFIRMED
+            self.status       = self.STATUS_CONFIRMED
             self.confirmed_at = timezone.now()
             self.confirmed_by = get_current_user()
             self.save(update_fields=["status", "confirmed_at", "confirmed_by", "updated_at"])
 
-            # Post credit ledger entry — mirrors Odoo's action_confirm() hook
+            # Credit ledger entry (tracks receivables regardless of payment mode)
             from apps.customers.models import CreditLedger
             CreditLedger.objects.create(
                 customer=self.customer,
@@ -135,6 +155,19 @@ class Order(AuditModel):
                 notes=f"Sale Order {self.order_number}",
             )
 
+            # Cashbook sync — only for immediate (non-credit) sales
+            if self.payment_mode in (self.PAYMENT_MODE_CASH, self.PAYMENT_MODE_ONLINE):
+                from apps.cashbook.models import CashTransaction
+                CashTransaction.objects.create(
+                    transaction_type=CashTransaction.TYPE_IN,
+                    category="sale",
+                    amount=self.total_amount,
+                    mode=self.payment_mode,
+                    transaction_date=self.confirmed_at.date(),
+                    description=f"Sale {self.order_number}",
+                    order=self,
+                )
+
     def cancel(self):
         """Cancel a draft order. Confirmed orders cannot be cancelled via API."""
         if self.status not in (self.STATUS_DRAFT,):
@@ -142,9 +175,10 @@ class Order(AuditModel):
         self.status = self.STATUS_CANCELLED
         self.save(update_fields=["status", "updated_at"])
 
-    def mark_paid(self):
+    def mark_paid(self, payment_mode=PAYMENT_MODE_CASH):
         """
-        Mark confirmed order as paid and post a payment ledger entry.
+        Mark confirmed order as paid, post a payment ledger entry,
+        and sync a CashTransaction IN (category='payment_received').
         """
         if self.status != self.STATUS_CONFIRMED:
             raise ValueError("Only confirmed orders can be marked as paid.")
@@ -161,6 +195,17 @@ class Order(AuditModel):
                     amount=remaining,
                     order=self,
                     notes=f"Payment for {self.order_number}",
+                )
+                # Cashbook sync
+                from apps.cashbook.models import CashTransaction
+                CashTransaction.objects.create(
+                    transaction_type=CashTransaction.TYPE_IN,
+                    category="payment_received",
+                    amount=remaining,
+                    mode=payment_mode,
+                    transaction_date=timezone.now().date(),
+                    description=f"Payment received for {self.order_number}",
+                    order=self,
                 )
 
     @property
@@ -188,12 +233,12 @@ class OrderItem(AuditModel):
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(
-        "products.Product", on_delete=models.PROTECT, related_name="order_items"
+        "products.Product", on_delete=models.PROTECT, related_name="order_items",
     )
-    quantity = models.DecimalField(max_digits=10, decimal_places=3)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    quantity       = models.DecimalField(max_digits=10, decimal_places=3)
+    unit_price     = models.DecimalField(max_digits=12, decimal_places=2)
     is_price_overridden = models.BooleanField(default=False)
-    notes = models.CharField(max_length=255, blank=True)
+    notes          = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ["id"]
@@ -219,5 +264,4 @@ class OrderItem(AuditModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Recalculate order total whenever a line changes
         self.order.recalculate_total()

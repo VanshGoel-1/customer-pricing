@@ -82,6 +82,7 @@ class OrderSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     customer_phone = serializers.CharField(source="customer.phone", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    payment_mode_display = serializers.CharField(source="get_payment_mode_display", read_only=True)
     confirmed_by_name = serializers.CharField(source="confirmed_by.name", read_only=True, default=None)
     total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     remaining_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -90,7 +91,8 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "order_number", "customer", "customer_name", "customer_phone",
-            "status", "status_display", "total_amount", "total_paid", "remaining_balance", "notes",
+            "status", "status_display", "payment_mode", "payment_mode_display",
+            "total_amount", "total_paid", "remaining_balance", "notes",
             "confirmed_at", "confirmed_by", "confirmed_by_name",
             "created_at", "updated_at", "items",
         ]
@@ -105,7 +107,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["customer", "notes", "items"]
+        fields = ["customer", "payment_mode", "notes", "items"]
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])

@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import Cashbook from './pages/Cashbook'
 import CustomerProfile from './pages/CustomerProfile'
 import Customers from './pages/Customers'
 import Dashboard from './pages/Dashboard'
@@ -21,6 +22,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/bill" element={<ProtectedRoute><Layout><NewBill /></Layout></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Layout><Orders /></Layout></ProtectedRoute>} />
+      <Route path="/cashbook" element={<ProtectedRoute><Layout><Cashbook /></Layout></ProtectedRoute>} />
 
       {/* Manager + Admin only */}
       <Route path="/customers" element={<ProtectedRoute requireRole="manager"><Layout><Customers /></Layout></ProtectedRoute>} />

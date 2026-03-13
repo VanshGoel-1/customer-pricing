@@ -101,3 +101,12 @@ class PriceSetThrottle(UserRateThrottle):
     inflate the audit log with noise.
     """
     scope = "price_set"
+
+
+class CashbookCreateThrottle(UserRateThrottle):
+    """
+    30 cashbook entries/min per user.
+    A realistic cashier entering transactions manually needs at most a few
+    per minute; 30/min blocks automated flooding of the cash ledger.
+    """
+    scope = "cashbook_create"

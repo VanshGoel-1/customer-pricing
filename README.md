@@ -27,7 +27,7 @@ A production-grade, standalone customer-based dynamic pricing application built 
 
 ## Overview
 
-Customer Pricing System allows businesses to manage **per-customer product pricing**, track every price change with a full **immutable audit trail**, monitor **customer credit balances**, and process bills from a fast **cashier screen** — all in one locally-deployed app.
+Customer Pricing System allows businesses to manage **per-customer product pricing**, track every price change with a full **immutable audit trail**, monitor **customer credit balances**, process bills from a fast **cashier screen**, and record all daily cash flow in a built-in **cashbook** — all in one locally-deployed app.
 
 Each customer gets a dedicated pricelist. When the cashier selects a customer on the billing screen and searches for a product, the customer-specific price auto-fills. Prices can be overridden per transaction, and every change is permanently logged.
 
@@ -47,6 +47,9 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 ### Products
 ![Products](docs/screenshots/products.png)
 
+### Cashbook
+![Cashbook](docs/screenshots/cashbook.png)
+
 ---
 
 ## Features
@@ -56,7 +59,18 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 - Search products by **name or SKU** with live autocomplete
 - Prices **auto-fill** from customer's pricelist; fall back to base price
 - Cashier can **override** the price (tracked as `is_price_overridden`)
-- One-click **Confirm & Bill** — atomically confirms order and posts credit ledger entry
+- Choose **payment mode** at order creation: Cash, Online / UPI, or Credit
+- One-click **Confirm & Bill** — atomically confirms order, posts credit ledger entry, and (for cash/online orders) auto-creates a Cashbook entry
+
+### Cashbook
+- Unified daily cash flow ledger — all **Money In** and **Money Out** in one view
+- **5 categories**: Sale, Payment Received, Manual In (IN) · Expense, Manual Out (OUT)
+- **Order sync** — cash/online orders auto-create `sale` entries on confirm; credit payments auto-create `payment_received` entries on payment
+- Summary dashboard: **Total Balance**, **Cash in Hand** (cash-mode only), **Today's IN**, **Today's OUT**
+- Filters by type (IN/OUT) and mode (cash/online)
+- Cashiers can manually add/edit entries; **only managers can delete**
+- `order_number` column links auto-created entries back to their source order
+- Attachment support (image/PDF) for receipts
 
 ### Pricing
 - Each customer gets a **dedicated pricelist** (auto-created on first price set)
@@ -78,6 +92,9 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 | Feature | Cashier | Manager | Admin |
 |---|:---:|:---:|:---:|
 | New Bill | ✓ | ✓ | ✓ |
+| Choose payment mode | ✓ | ✓ | ✓ |
+| Cashbook — view & add | ✓ | ✓ | ✓ |
+| Cashbook — delete | — | ✓ | ✓ |
 | View own orders | ✓ | ✓ | ✓ |
 | View all orders | — | ✓ | ✓ |
 | Customers | — | ✓ | ✓ |
@@ -93,6 +110,8 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 - Database-level `CHECK` constraints on all critical fields
 - Soft-delete (archive) instead of hard delete — no accidental data loss
 - Security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
+- `BotGuardMiddleware` blocks requests without `User-Agent` on all `/api/` paths
+- `IpThrottleMiddleware` sliding-window rate limiter (120/min authenticated, 30/min anonymous)
 
 ---
 
@@ -126,12 +145,12 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
                          │ HTTP :8000
 ┌────────────────────────▼────────────────────────────────┐
 │           Django + Gunicorn (backend container)          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
-│  │  users   │ │ products │ │customers │ │ pricing  │  │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
-│                        ┌──────────┐                     │
-│                        │  orders  │                     │
-│                        └──────────┘                     │
+│  ┌────────┐ ┌─────────┐ ┌──────────┐ ┌────────────┐   │
+│  │ users  │ │products │ │customers │ │  pricing   │   │
+│  └────────┘ └─────────┘ └──────────┘ └────────────┘   │
+│        ┌──────────┐          ┌──────────────┐           │
+│        │  orders  │──sync───▶│   cashbook   │           │
+│        └──────────┘          └──────────────┘           │
 └────────────────────────┬────────────────────────────────┘
                          │ TCP :5432
 ┌────────────────────────▼────────────────────────────────┐
@@ -246,6 +265,98 @@ All endpoints are prefixed with `/api/v1/`. All responses follow a consistent en
 }
 ```
 
+### Cashbook
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| `GET` | `/cashbook/` | List transactions (cashier: own only) | All |
+| `POST` | `/cashbook/in/` | Record Money In entry | All |
+| `POST` | `/cashbook/out/` | Record Money Out entry | All |
+| `GET` | `/cashbook/{id}/` | Get transaction detail | All |
+| `PATCH` | `/cashbook/{id}/` | Update transaction | All |
+| `DELETE` | `/cashbook/{id}/` | Delete transaction | Manager+ |
+| `GET` | `/cashbook/summary/` | Total IN, OUT, balance, cash-in-hand | All |
+| `GET` | `/cashbook/categories/` | IN and OUT category lists | All |
+
+**IN categories:** `sale`, `payment_received`, `manual_in`
+**OUT categories:** `expense`, `manual_out`
+
+**Create Money In:**
+```json
+// POST /api/v1/cashbook/in/
+{
+  "amount": "500.00",
+  "category": "sale",
+  "mode": "cash",
+  "transaction_date": "2026-03-14",
+  "description": "Morning sales"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "transaction_type": "IN",
+    "amount": "500.00",
+    "category": "sale",
+    "category_display": "Sale",
+    "mode": "cash",
+    "mode_display": "Cash",
+    "transaction_date": "2026-03-14",
+    "order_number": null,
+    "description": "Morning sales",
+    "created_at": "2026-03-14T10:30:00Z"
+  }
+}
+```
+
+**Summary response:**
+```json
+// GET /api/v1/cashbook/summary/
+{
+  "success": true,
+  "data": {
+    "total_in": "1500.00",
+    "total_out": "300.00",
+    "balance": "1200.00",
+    "cash_in_hand": "900.00"
+  }
+}
+```
+
+### Orders
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| `GET` | `/orders/` | List orders | All (cashiers see own) |
+| `POST` | `/orders/` | Create draft order | All |
+| `GET` | `/orders/{id}/` | Get order detail | All |
+| `POST` | `/orders/{id}/confirm/` | Confirm + post ledger (+ cashbook for cash/online) | All |
+| `POST` | `/orders/{id}/mark-paid/` | Mark as paid + cashbook entry | Manager+ |
+| `POST` | `/orders/{id}/cancel/` | Cancel draft | Manager+ |
+| `POST` | `/orders/{id}/payment/` | Record partial payment + cashbook entry | All |
+| `POST` | `/orders/{order_id}/items/` | Add item to draft | All |
+
+**Create order:**
+```json
+// POST /api/v1/orders/
+{
+  "customer": 3,
+  "payment_mode": "cash",
+  "items": [
+    { "product": 7, "quantity": "2" }
+  ]
+}
+```
+`payment_mode` options: `cash`, `online`, `credit` (default: `credit`)
+
+**Record payment:**
+```json
+// POST /api/v1/orders/{id}/payment/
+{ "amount": "250.00", "mode": "cash" }
+```
+
 ### Customers
 
 | Method | Endpoint | Description | Roles |
@@ -289,32 +400,6 @@ All endpoints are prefixed with `/api/v1/`. All responses follow a consistent en
 }
 ```
 
-**Price lookup response:**
-```json
-{
-  "success": true,
-  "data": {
-    "product_id": 7,
-    "product_name": "Basmati Rice 5kg",
-    "price": "450.00",
-    "base_price": "500.00",
-    "is_custom_price": true
-  }
-}
-```
-
-### Orders
-
-| Method | Endpoint | Description | Roles |
-|---|---|---|---|
-| `GET` | `/orders/` | List orders | All (cashiers see own) |
-| `POST` | `/orders/` | Create draft order | All |
-| `GET` | `/orders/{id}/` | Get order detail | All |
-| `POST` | `/orders/{id}/confirm/` | Confirm + post ledger | All |
-| `POST` | `/orders/{id}/mark-paid/` | Mark as paid | Manager+ |
-| `POST` | `/orders/{id}/cancel/` | Cancel draft | Manager+ |
-| `POST` | `/orders/{order_id}/items/` | Add item to draft | All |
-
 ---
 
 ## Role-Based Access
@@ -326,10 +411,10 @@ admin
   └── Full access + user management
 
 manager
-  └── Products, customers, pricing, all orders, ledger
+  └── Products, customers, pricing, all orders, ledger, cashbook delete
 
 cashier
-  └── New bill, own orders only
+  └── New bill, own orders only, cashbook add/view (own entries)
 ```
 
 The permission classes (`IsAdmin`, `IsManagerOrAbove`, `IsAnyRole`, `ReadOnly`) are composable with DRF's `|` operator:
@@ -342,6 +427,27 @@ permission_classes = [IsAuthenticated, IsManagerOrAbove | ReadOnly]
 ---
 
 ## Key Design Decisions
+
+### Cashbook Order Sync
+When a cash or online order is confirmed, a `CashTransaction (IN, category='sale')` is automatically created inside the same `transaction.atomic()` block. Credit orders skip this — no cash changed hands. When a credit customer pays (via `mark-paid` or partial `payment`), a `CashTransaction (IN, category='payment_received')` is created, linked back to the order via FK. Cashiers can still manually add/edit/delete entries — the auto-created ones are a convenience, not a lock.
+
+```python
+# orders/models.py
+def confirm(self):
+    with transaction.atomic():
+        self.status = STATUS_CONFIRMED
+        self.save()
+        CreditLedger.objects.create(...)   # always — tracks receivable
+        if self.payment_mode in (PAYMENT_MODE_CASH, PAYMENT_MODE_ONLINE):
+            CashTransaction.objects.create(
+                transaction_type="IN", category="sale",
+                amount=self.total_amount, mode=self.payment_mode,
+                order=self,
+            )
+```
+
+### Separate IN / OUT Create Endpoints
+Instead of a single `POST /cashbook/` with a `transaction_type` field, the API exposes `POST /cashbook/in/` and `POST /cashbook/out/`. The view injects `transaction_type` from the URL — clients can't accidentally post an expense to the wrong side. Category validation is still enforced in the serializer as a second layer.
 
 ### Immutable Price History
 Every price change creates a new `PriceHistory` record. Updates and deletes are blocked at the model level — attempting either raises `PermissionDenied`. This matches Odoo's approach of never allowing write/unlink on audit models.
@@ -357,21 +463,7 @@ def delete(self, *args, **kwargs):
 ```
 
 ### Atomic Order Confirmation
-Confirming an order and posting the credit ledger entry happen in a single database transaction. Either both succeed or neither does — no partial state.
-
-```python
-def confirm(self):
-    with transaction.atomic():
-        self.status = self.STATUS_CONFIRMED
-        self.confirmed_at = timezone.now()
-        self.save()
-        CreditLedger.objects.create(
-            customer=self.customer,
-            entry_type="credit",
-            amount=self.total_amount,
-            order=self,
-        )
-```
+Confirming an order, posting the credit ledger entry, and (for cash/online) posting the cashbook entry all happen in a single database transaction. Either all succeed or none do.
 
 ### Auto Audit Fields (thread-local user)
 Every model inherits `AuditModel` which automatically stamps `created_by` / `updated_by` from the request user — without passing the user explicitly through every save call. Inspired directly by Odoo's `self.env.user`.
@@ -399,6 +491,24 @@ No record is ever hard-deleted. Customers, products, and users are deactivated (
 ---
 
 ## Code Highlights
+
+### Backend — Cashbook balance (one DB query)
+```python
+# cashbook/models.py
+def compute_balance(queryset=None):
+    qs = queryset or CashTransaction.objects.all()
+    agg = qs.aggregate(
+        total_in  = Coalesce(Sum("amount", filter=Q(transaction_type="IN")),  Value(0), ...),
+        total_out = Coalesce(Sum("amount", filter=Q(transaction_type="OUT")), Value(0), ...),
+        cash_in   = Coalesce(Sum("amount", filter=Q(transaction_type="IN",  mode="cash")), Value(0), ...),
+        cash_out  = Coalesce(Sum("amount", filter=Q(transaction_type="OUT", mode="cash")), Value(0), ...),
+    )
+    return {
+        "balance":      agg["total_in"] - agg["total_out"],
+        "cash_in_hand": agg["cash_in"]  - agg["cash_out"],
+        ...
+    }
+```
 
 ### Backend — Outstanding Balance (one DB query)
 ```python
@@ -481,6 +591,8 @@ customer-pricing/
 │   ├── manage.py
 │   ├── entrypoint.sh              # Migrations + gunicorn startup
 │   ├── create_admin.py            # Idempotent admin creation
+│   ├── conftest.py                # Shared pytest fixtures (roles, throttle isolation)
+│   ├── pytest.ini
 │   ├── config/
 │   │   ├── settings/
 │   │   │   ├── base.py            # Shared settings
@@ -489,12 +601,16 @@ customer-pricing/
 │   │   ├── urls.py
 │   │   └── wsgi.py
 │   └── apps/
-│       ├── core/                  # AuditModel, permissions, middleware, exceptions
+│       ├── core/                  # AuditModel, permissions, middleware, throttling
 │       ├── users/                 # Custom User model, JWT views
 │       ├── products/              # Product, ProductCategory
 │       ├── customers/             # Customer, CreditLedger
 │       ├── pricing/               # CustomerPricelist, PricelistItem, PriceHistory
-│       └── orders/                # Order, OrderItem
+│       ├── orders/                # Order (with payment_mode), OrderItem
+│       └── cashbook/              # CashTransaction, compute_balance, order sync
+│           └── tests/
+│               ├── test_models.py
+│               └── test_api.py    # Covers auth, CRUD, summary, filters, roles, order sync
 │
 ├── frontend/
 │   ├── Dockerfile                 # Multi-stage: Node build → Nginx serve
@@ -503,14 +619,15 @@ customer-pricing/
 │   ├── vite.config.js
 │   ├── tailwind.config.js
 │   └── src/
-│       ├── api/                   # client.js, auth.js, products.js, ...
-│       ├── context/               # AuthContext (JWT state)
-│       ├── components/            # Layout, Sidebar, ProtectedRoute
+│       ├── api/                   # client.js, auth.js, cashbook.js, orders.js, ...
+│       ├── context/               # AuthContext (JWT state + role helpers)
+│       ├── components/            # Layout, Sidebar, ProtectedRoute, AddTransactionModal
 │       └── pages/
 │           ├── Login.jsx
 │           ├── Dashboard.jsx
-│           ├── NewBill.jsx        # Cashier billing screen
+│           ├── NewBill.jsx        # Cashier billing screen (payment_mode selector)
 │           ├── Orders.jsx
+│           ├── Cashbook.jsx       # Summary cards, transaction table, filters
 │           ├── Customers.jsx
 │           ├── CustomerProfile.jsx
 │           ├── Products.jsx
@@ -529,20 +646,23 @@ customer-pricing/
 2. Create a feature branch: `git checkout -b feature/your-feature`
 3. Make your changes
 4. Verify the app runs: `start.bat`
-5. Commit: `git commit -m "Add your feature"`
-6. Push and open a Pull Request
+5. Run tests: `docker compose exec backend pytest apps/ -v`
+6. Commit: `git commit -m "Add your feature"`
+7. Push and open a Pull Request
 
 ### Backend conventions
 - All models inherit `AuditModel` for automatic audit fields
 - Never hard-delete business records — use `is_active = False`
 - All write operations must check `IsManagerOrAbove` or `IsAdmin` permissions
 - Wrap multi-step DB operations in `transaction.atomic()`
-- Add `CheckConstraint` at the model level for every numeric field with a valid range
+- Add `CheckConstraint` (using `condition=`, not `check=`) for every numeric field with a valid range
+- Cross-app sync (e.g. cashbook entries from orders) goes in the model method, inside the existing `atomic()` block
 
 ### Frontend conventions
 - All API calls go through `src/api/client.js` — never use raw `fetch`
 - Role-based UI uses `useAuth()` — `isAdmin`, `isManager`, `isCashier`
 - New pages go in `src/pages/`, new reusable components in `src/components/`
+- Rebuild the Docker image after any frontend source change: `docker compose build frontend && docker compose up -d`
 
 ---
 

@@ -57,6 +57,7 @@ LOCAL_APPS = [
     "apps.customers",
     "apps.pricing",
     "apps.orders",
+    "apps.cashbook",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -232,6 +233,7 @@ REST_FRAMEWORK = {
         "order_action":   "10/min",    # confirm/pay/cancel → ledger entries
         "payment_post":   "5/min",     # fake payment posting
         "price_set":      "20/min",    # price-history spam
+        "cashbook_create": "30/min",   # cashbook entry flood
     },
 }
 
