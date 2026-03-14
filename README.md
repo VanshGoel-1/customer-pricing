@@ -185,12 +185,12 @@ The script will:
 5. Wait for the health check to pass
 6. Open `http://localhost` in your browser
 
-#### Option B: Manual Start (Mac/Linux or if script fails)
-If `start.bat` fails or you are on a non-Windows machine, follow these manual steps:
+#### Option B: Docker Compose (Mac/Linux)
+If `start.bat` fails or you are on a non-Windows machine, you can still use Docker:
 
-1. Add your `.env` file:
+1. Copy the example env file:
    ```bash
-   cp .env.example .env
+   cp backend/.env.example .env
    # Update the variable values inside .env as needed
    ```
 2. Make sure [Docker Desktop](https://www.docker.com/products/docker-desktop) is open and running.
@@ -200,6 +200,34 @@ If `start.bat` fails or you are on a non-Windows machine, follow these manual st
    ```
 4. Access the UI at [http://localhost](http://localhost).
    *(Note: The database migrations and admin user creation are handled automatically by `backend/entrypoint.sh` every time the backend container starts.)*
+
+#### Option C: Local Development (Without Docker)
+If you want to run the application directly on your machine without Docker for development:
+
+**1. Database**
+Ensure PostgreSQL is running locally. Create a database named `customer_pricing` (or as configured in `.env`).
+
+**2. Backend**
+```bash
+cd backend
+cp .env.example .env
+# Ensure DB_HOST=localhost in .env
+python -m venv venv
+source venv/bin/activate  # Or `venv\Scripts\activate` on Windows
+pip install -r requirements.txt
+python manage.py migrate
+python create_admin.py
+python manage.py runserver
+```
+*API will run on http://localhost:8000*
+
+**3. Frontend**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*UI will run on http://localhost:5173 (or as shown in the console)*
 
 ### Stop
 
