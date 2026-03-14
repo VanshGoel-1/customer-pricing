@@ -44,6 +44,7 @@ export default function NewBill() {
   const [lines, setLines] = useState([])
 
   // ── Order state ───────────────────────────────────────────────────────
+  const [paymentMode, setPaymentMode] = useState('credit')
   const [submitting, setSubmitting] = useState(false)
   const [confirmedOrder, setConfirmedOrder] = useState(null)
   const [submitError, setSubmitError] = useState('')
@@ -164,6 +165,7 @@ export default function NewBill() {
     try {
       const { data: orderData } = await createOrder({
         customer: customer.id,
+        payment_mode: paymentMode,
         items: lines.map((l) => ({
           product: l.product_id,
           quantity: l.quantity,
@@ -185,6 +187,7 @@ export default function NewBill() {
     setCustomerResults([])
     setCustomer(null)
     setLines([])
+    setPaymentMode('credit')
     setConfirmedOrder(null)
     setSubmitError('')
     setCustomerError('')
@@ -376,14 +379,39 @@ export default function NewBill() {
           </table>
 
           {/* Total + confirm */}
-          <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-4">
             <div>
               <p className="text-xs text-gray-500">Total Amount</p>
               <p className="text-2xl font-bold text-gray-900">
                 {total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
             </div>
-            <div className="flex gap-3 items-center">
+
+            {/* Payment mode */}
+            <div className="flex rounded-lg overflow-hidden border border-gray-300 text-sm font-medium">
+              {[
+                { value: 'cash',   label: 'Cash' },
+                { value: 'online', label: 'Online' },
+                { value: 'credit', label: 'Credit' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPaymentMode(value)}
+                  className={`px-3 py-2 transition-colors
+                    ${paymentMode === value
+                      ? value === 'credit'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-green-500 text-white'
+                      : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 items-center ml-auto">
               {submitError && <p className="text-sm text-red-600">{submitError}</p>}
               <button onClick={reset} className="btn-secondary">Clear</button>
               <button onClick={handleConfirm} disabled={submitting || !customer} className="btn-primary px-6">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { cancelOrder, getOrders, markPaid, recordPayment } from '../api/orders'
 import { useAuth } from '../context/AuthContext'
+import OrderDetailModal from '../components/OrderDetailModal'
 
 const statusColor = {
   draft:     'bg-gray-100 text-gray-600',
@@ -9,15 +10,25 @@ const statusColor = {
   cancelled: 'bg-red-100 text-red-600',
 }
 
+const modeColor = {
+  cash:   'bg-green-100 text-green-700',
+  online: 'bg-blue-100 text-blue-700',
+  credit: 'bg-amber-100 text-amber-700',
+}
+
 export default function Orders() {
   const { isManager } = useAuth()
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [orders, setOrders]           = useState([])
+  const [loading, setLoading]         = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [actionError, setActionError] = useState('')
-  // Payment input state: { [orderId]: amountString }
+
+  // Payment input state: { [orderId]: { amount, mode } }
   const [paymentInputs, setPaymentInputs] = useState({})
-  const [payingId, setPayingId] = useState(null)
+  const [payingId, setPayingId]           = useState(null)
+
+  // Detail modal
+  const [detailOrderId, setDetailOrderId] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -32,35 +43,47 @@ export default function Orders() {
     }
   }
 
-  useEffect(() => { load() }, [statusFilter])
+  useEffect(() => { load() }, [statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleMarkPaid = async (id) => {
+  const handleMarkPaid = async (id, e) => {
+    e.stopPropagation()
     setActionError('')
     try { await markPaid(id); load() }
-    catch (e) { setActionError(e.response?.data?.error?.message || 'Action failed.') }
+    catch (err) { setActionError(err.response?.data?.error?.message || 'Action failed.') }
   }
 
-  const handleCancel = async (id) => {
+  const handleCancel = async (id, e) => {
+    e.stopPropagation()
     if (!window.confirm('Cancel this order?')) return
     setActionError('')
     try { await cancelOrder(id); load() }
-    catch (e) { setActionError(e.response?.data?.error?.message || 'Action failed.') }
+    catch (err) { setActionError(err.response?.data?.error?.message || 'Action failed.') }
   }
 
-  const handleRecordPayment = async (order) => {
-    const amount = parseFloat(paymentInputs[order.id] || 0)
+  const handleRecordPayment = async (order, e) => {
+    e.stopPropagation()
+    const input  = paymentInputs[order.id] || {}
+    const amount = parseFloat(input.amount || 0)
+    const mode   = input.mode || 'cash'
     if (!amount || amount <= 0) return
     setPayingId(order.id)
     setActionError('')
     try {
-      await recordPayment(order.id, amount)
-      setPaymentInputs((prev) => ({ ...prev, [order.id]: '' }))
+      await recordPayment(order.id, amount, mode)
+      setPaymentInputs((prev) => ({ ...prev, [order.id]: {} }))
       load()
-    } catch (e) {
-      setActionError(e.response?.data?.error?.message || 'Payment failed.')
+    } catch (err) {
+      setActionError(err.response?.data?.error?.message || 'Payment failed.')
     } finally {
       setPayingId(null)
     }
+  }
+
+  const setPaymentField = (orderId, field, value) => {
+    setPaymentInputs((prev) => ({
+      ...prev,
+      [orderId]: { ...(prev[orderId] || {}), [field]: value },
+    }))
   }
 
   return (
@@ -91,7 +114,8 @@ export default function Orders() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Order #', 'Customer', 'Total', 'Paid', 'Remaining', 'Status', 'Date', isManager ? 'Actions' : ''].map((h) => (
+                {['Order #', 'Customer', 'Mode', 'Total', 'Paid', 'Remaining', 'Status', 'Date',
+                  isManager ? 'Actions' : ''].map((h) => (
                   <th key={h} className="text-left px-4 py-3 font-medium text-gray-600">{h}</th>
                 ))}
               </tr>
@@ -100,24 +124,34 @@ export default function Orders() {
               {orders.map((o) => {
                 const remaining = Number(o.remaining_balance ?? (o.total_amount - (o.total_paid || 0)))
                 const totalPaid = Number(o.total_paid || 0)
+                const input = paymentInputs[o.id] || {}
                 return (
-                  <tr key={o.id} className="hover:bg-gray-50">
+                  <tr
+                    key={o.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setDetailOrderId(o.id)}
+                  >
                     <td className="px-4 py-3 font-mono font-medium text-brand-600">{o.order_number}</td>
                     <td className="px-4 py-3">
                       <p>{o.customer_name}</p>
                       <p className="text-xs text-gray-400">{o.customer_phone}</p>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${modeColor[o.payment_mode] || 'bg-gray-100 text-gray-600'}`}>
+                        {o.payment_mode_display || o.payment_mode}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 font-semibold">
-                      {Number(o.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {Number(o.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-4 py-3 text-green-600 font-medium">
                       {totalPaid > 0
-                        ? totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })
+                        ? totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })
                         : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       {remaining > 0
-                        ? <span className="text-red-600 font-semibold">{remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        ? <span className="text-red-600 font-semibold">{remaining.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         : <span className="text-green-600 text-xs font-medium">Fully paid</span>}
                     </td>
                     <td className="px-4 py-3">
@@ -125,23 +159,27 @@ export default function Orders() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{new Date(o.created_at).toLocaleDateString()}</td>
                     {isManager && (
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-col gap-2">
-                          {/* Partial / full payment on confirmed orders */}
                           {o.status === 'confirmed' && remaining > 0 && (
                             <div className="flex items-center gap-1">
                               <input
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                max={remaining}
+                                type="number" min="0.01" step="0.01" max={remaining}
                                 placeholder={`Max ${remaining.toFixed(2)}`}
-                                className="input w-28 text-right py-1 text-xs"
-                                value={paymentInputs[o.id] || ''}
-                                onChange={(e) => setPaymentInputs((p) => ({ ...p, [o.id]: e.target.value }))}
+                                className="input w-24 text-right py-1 text-xs"
+                                value={input.amount || ''}
+                                onChange={(e) => setPaymentField(o.id, 'amount', e.target.value)}
                               />
+                              <select
+                                className="input py-1 text-xs w-20"
+                                value={input.mode || 'cash'}
+                                onChange={(e) => setPaymentField(o.id, 'mode', e.target.value)}
+                              >
+                                <option value="cash">Cash</option>
+                                <option value="online">Online</option>
+                              </select>
                               <button
-                                onClick={() => handleRecordPayment(o)}
+                                onClick={(e) => handleRecordPayment(o, e)}
                                 disabled={payingId === o.id}
                                 className="text-xs btn-primary py-1 px-2 whitespace-nowrap"
                               >
@@ -150,12 +188,18 @@ export default function Orders() {
                             </div>
                           )}
                           {o.status === 'confirmed' && remaining > 0 && (
-                            <button onClick={() => handleMarkPaid(o.id)} className="text-xs text-brand-600 hover:underline text-left">
+                            <button
+                              onClick={(e) => handleMarkPaid(o.id, e)}
+                              className="text-xs text-brand-600 hover:underline text-left"
+                            >
                               Mark fully paid
                             </button>
                           )}
                           {o.status === 'draft' && (
-                            <button onClick={() => handleCancel(o.id)} className="text-xs text-red-500 hover:underline">
+                            <button
+                              onClick={(e) => handleCancel(o.id, e)}
+                              className="text-xs text-red-500 hover:underline"
+                            >
                               Cancel
                             </button>
                           )}
@@ -168,6 +212,13 @@ export default function Orders() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {detailOrderId && (
+        <OrderDetailModal
+          orderId={detailOrderId}
+          onClose={() => setDetailOrderId(null)}
+        />
       )}
     </div>
   )
