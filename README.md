@@ -172,6 +172,7 @@ All three containers are managed by Docker Compose. Data is persisted in a named
 
 ### Launch
 
+#### Option A: One-Click Start (Windows)
 ```bat
 start.bat
 ```
@@ -183,6 +184,22 @@ The script will:
 4. Create the default admin user
 5. Wait for the health check to pass
 6. Open `http://localhost` in your browser
+
+#### Option B: Manual Start (Mac/Linux or if script fails)
+If `start.bat` fails or you are on a non-Windows machine, follow these manual steps:
+
+1. Add your `.env` file:
+   ```bash
+   cp .env.example .env
+   # Update the variable values inside .env as needed
+   ```
+2. Make sure [Docker Desktop](https://www.docker.com/products/docker-desktop) is open and running.
+3. Build and spin up the containers in the background:
+   ```bash
+   docker compose up -d --build
+   ```
+4. Access the UI at [http://localhost](http://localhost).
+   *(Note: The database migrations and admin user creation are handled automatically by `backend/entrypoint.sh` every time the backend container starts.)*
 
 ### Stop
 
