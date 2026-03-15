@@ -14,9 +14,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token["name"] = user.name
+        # Only embed role — needed by the frontend for UI rendering without
+        # an extra API call. Name and email are omitted: they are already
+        # in the login response body (data["user"]) and keeping them in the
+        # token payload unnecessarily exposes PII to anyone who captures the token.
         token["role"] = user.role
-        token["email"] = user.email
         return token
 
     def validate(self, attrs):

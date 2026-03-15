@@ -42,16 +42,20 @@ _AUTH_PATHS = frozenset({
 
 def _get_client_ip(request):
     """
-    Extract the real client IP, respecting the X-Forwarded-For header
-    set by Nginx.  Only trusts the leftmost IP to prevent spoofing.
+    Extract the real client IP from the X-Real-IP header set by Nginx.
+
+    Nginx sets:  proxy_set_header X-Real-IP $remote_addr;
+    $remote_addr is the actual TCP-connecting IP — it cannot be forged by
+    the client because it comes from the OS socket, not from request headers.
+
+    X-Forwarded-For is intentionally NOT used here: Nginx appends to any
+    existing XFF the client sends, so the leftmost value is attacker-controlled
+    and would allow unlimited rate-limit bypass by rotating fake IPs.
     """
-    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded_for:
-        # X-Forwarded-For: client, proxy1, proxy2
-        ip = forwarded_for.split(",")[0].strip()
-    else:
-        ip = request.META.get("REMOTE_ADDR", "unknown")
-    return ip
+    return (
+        request.META.get("HTTP_X_REAL_IP")
+        or request.META.get("REMOTE_ADDR", "unknown")
+    )
 
 
 def _sliding_window_check(cache_key, limit, window):

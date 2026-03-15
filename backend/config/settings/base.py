@@ -189,7 +189,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.users.authentication.ActiveUserJWTAuthentication",
     ],
     # Deny by default — every view must explicitly declare permissions
     "DEFAULT_PERMISSION_CLASSES": [
