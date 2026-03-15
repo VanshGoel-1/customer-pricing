@@ -1,12 +1,12 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Customer Pricing — Starting...
+title Customer Pricing - Starting...
 color 0A
 cls
 
 echo.
 echo  ============================================
-echo   Customer Pricing System — Starting Up
+echo   Customer Pricing System - Starting Up
 echo  ============================================
 echo.
 
@@ -74,10 +74,10 @@ echo.
 :docker_ready
 echo  [OK]    Docker daemon is ready.
 
-:: ── 3. Move to project directory ──────────────────────────────────────────
+:: --- 3. Move to project directory ------------------------------------------
 cd /d "%~dp0"
 
-:: ── 4. Check .env exists ──────────────────────────────────────────────────
+:: --- 4. Check .env exists --------------------------------------------------
 echo  [CHECK] Looking for .env file...
 if not exist ".env" (
     echo.
@@ -95,20 +95,20 @@ echo  [OK]    .env file found.
 :: ── 5. Build and start all services ───────────────────────────────────────
 echo.
 echo  [INFO]  Building and starting services...
-echo          (First run downloads images and compiles — allow 3-5 minutes)
+echo          (First run downloads images and compiles - allow 3-5 minutes)
 echo.
 docker compose up --build -d
 
 :: Docker Desktop on Windows sometimes returns exit code 1 even on success.
 :: Verify by checking if the backend container is actually running.
-docker compose ps --services --filter "status=running" 2>nul | findstr /C:"backend" >nul
+docker compose ps --services --filter "status=running" | findstr /C:"backend" >nul
 if errorlevel 1 (
     echo.
-    echo  [ERROR] docker compose failed — backend container is not running.
-    echo          Full error shown above. Common causes:
-    echo            - Port 80 already in use (another web server running)
-    echo            - .env values incorrect
-    echo            - Disk space low
+    echo  [ERROR] docker compose failed - backend container is not running.
+    echo          Troubleshooting hints:
+    echo            - Check if Port 80 is in use
+    echo            - Verify .env values
+    echo            - Check Docker Desktop logs
     echo.
     pause
     exit /b 1
@@ -158,8 +158,8 @@ echo  ============================================
 echo.
 start "" http://localhost
 
-echo  Press any key to watch live logs  (app keeps running in background).
-echo  Close this window any time — containers stay running.
+echo  Press any key to watch live logs (app keeps running in background).
+echo  Close this window any time - containers stay running.
 echo.
 pause >nul
 docker compose logs -f

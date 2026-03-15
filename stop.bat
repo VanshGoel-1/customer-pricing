@@ -1,11 +1,11 @@
 @echo off
-title Customer Pricing — Stopping...
+title Customer Pricing - Stopping...
 color 0C
 cls
 
 echo.
 echo  ============================================
-echo   Customer Pricing System — Stopping
+echo   Customer Pricing System - Stopping
 echo  ============================================
 echo.
 

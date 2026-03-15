@@ -15,7 +15,7 @@ if not User.objects.filter(role="admin").exists():
     User.objects.create_superuser(
         email=os.environ.get("ADMIN_EMAIL", "admin@example.com"),
         name=os.environ.get("ADMIN_NAME", "Administrator"),
-        password=os.environ.get("ADMIN_PASSWORD", "changeme123!"),
+        password=os.environ.get("ADMIN_PASSWORD", "Admin@2026!"),
     )
     print("Admin user created.")
 else:
