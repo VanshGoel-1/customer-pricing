@@ -27,55 +27,52 @@ echo  [OK]    Docker CLI found.
 :: ── 2. Start Docker Desktop if daemon is not running ─────────────────────
 echo  [CHECK] Checking Docker daemon...
 docker info >nul 2>&1
-if errorlevel 1 (
-    echo  [INFO]  Docker daemon is not running. Attempting to start Docker Desktop...
+if not errorlevel 1 goto docker_ready
 
-    :: Try common install locations in order
-    set "DOCKER_EXE="
-    if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
-        set "DOCKER_EXE=C:\Program Files\Docker\Docker\Docker Desktop.exe"
-    ) else if exist "%LOCALAPPDATA%\Programs\Docker\Docker\Docker Desktop.exe" (
-        set "DOCKER_EXE=%LOCALAPPDATA%\Programs\Docker\Docker\Docker Desktop.exe"
-    ) else if exist "%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe" (
-        set "DOCKER_EXE=%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"
-    )
+echo  [INFO]  Docker daemon is not running. Attempting to start Docker Desktop...
 
-    if "!DOCKER_EXE!"=="" (
-        echo.
-        echo  [ERROR] Cannot find Docker Desktop executable.
-        echo          Please start Docker Desktop manually, then run this script again.
-        echo.
-        pause
-        exit /b 1
-    )
-
-    echo  [INFO]  Starting: !DOCKER_EXE!
-    start "" "!DOCKER_EXE!"
-
-    echo  [INFO]  Waiting for Docker daemon (this can take 30-60 seconds)...
-    set /a dock_wait=0
-    :wait_docker
-    set /a dock_wait+=1
-    if !dock_wait! gtr 24 (
-        echo.
-        echo  [ERROR] Docker daemon did not start after 2 minutes.
-        echo          Please open Docker Desktop manually and wait for it to show
-        echo          "Docker Desktop is running" in the system tray, then try again.
-        echo.
-        pause
-        exit /b 1
-    )
-    timeout /t 5 /nobreak >nul
-    docker info >nul 2>&1
-    if errorlevel 1 (
-        set /p =. <nul
-        goto wait_docker
-    )
-    echo.
-    echo  [OK]    Docker daemon is ready.
-) else (
-    echo  [OK]    Docker daemon is already running.
+set "DOCKER_EXE="
+if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+    set "DOCKER_EXE=C:\Program Files\Docker\Docker\Docker Desktop.exe"
+) else if exist "%LOCALAPPDATA%\Programs\Docker\Docker\Docker Desktop.exe" (
+    set "DOCKER_EXE=%LOCALAPPDATA%\Programs\Docker\Docker\Docker Desktop.exe"
+) else if exist "%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe" (
+    set "DOCKER_EXE=%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"
 )
+
+if "!DOCKER_EXE!"=="" (
+    echo.
+    echo  [ERROR] Cannot find Docker Desktop executable.
+    echo          Please start Docker Desktop manually, then run this script again.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo  [INFO]  Starting: !DOCKER_EXE!
+start "" "!DOCKER_EXE!"
+
+echo  [INFO]  Waiting for Docker daemon (this can take 30-60 seconds)...
+set /a dock_wait=0
+
+:wait_docker
+set /a dock_wait+=1
+if !dock_wait! gtr 24 (
+    echo.
+    echo  [ERROR] Docker daemon did not start after 2 minutes.
+    echo          Please open Docker Desktop manually and wait for it to show
+    echo          "Docker Desktop is running" in the system tray, then try again.
+    echo.
+    pause
+    exit /b 1
+)
+timeout /t 5 /nobreak >nul
+docker info >nul 2>&1
+if errorlevel 1 goto wait_docker
+echo.
+
+:docker_ready
+echo  [OK]    Docker daemon is ready.
 
 :: ── 3. Move to project directory ──────────────────────────────────────────
 cd /d "%~dp0"
@@ -101,10 +98,14 @@ echo  [INFO]  Building and starting services...
 echo          (First run downloads images and compiles — allow 3-5 minutes)
 echo.
 docker compose up --build -d
+
+:: Docker Desktop on Windows sometimes returns exit code 1 even on success.
+:: Verify by checking if the backend container is actually running.
+docker compose ps --services --filter "status=running" 2>nul | findstr /C:"backend" >nul
 if errorlevel 1 (
     echo.
-    echo  [ERROR] docker compose failed. Full error shown above.
-    echo          Common causes:
+    echo  [ERROR] docker compose failed — backend container is not running.
+    echo          Full error shown above. Common causes:
     echo            - Port 80 already in use (another web server running)
     echo            - .env values incorrect
     echo            - Disk space low
