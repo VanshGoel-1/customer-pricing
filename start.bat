@@ -88,7 +88,7 @@ if not exist ".env" (
     echo          Expected file: %~dp0.env
     echo.
     echo          Copy .env.example to .env and fill in the values:
-    echo          copy backend\.env.example .env
+    echo          copy .env.example .env
     echo.
     pause
     exit /b 1
