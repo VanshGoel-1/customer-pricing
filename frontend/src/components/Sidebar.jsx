@@ -27,7 +27,7 @@ export default function Sidebar() {
     <aside className="flex flex-col w-60 bg-brand-900 text-white h-screen fixed left-0 top-0 z-30">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-white/10">
-        <h1 className="text-lg font-bold tracking-tight">Customer Pricing</h1>
+        <h1 className="text-lg font-bold tracking-tight">Meri Digital Dukan ROS</h1>
         <p className="text-xs text-gray-400 mt-0.5 capitalize">{user?.role} · {user?.name}</p>
       </div>
 
