@@ -139,13 +139,19 @@ class Order(AuditModel):
             raise ValueError("Cannot confirm an order with no items.")
 
         with transaction.atomic():
-            self.status       = self.STATUS_CONFIRMED
             self.confirmed_at = timezone.now()
             self.confirmed_by = get_current_user()
+
+            # Cash/online orders are paid immediately; credit orders stay confirmed
+            if self.payment_mode in (self.PAYMENT_MODE_CASH, self.PAYMENT_MODE_ONLINE):
+                self.status = self.STATUS_PAID
+            else:
+                self.status = self.STATUS_CONFIRMED
             self.save(update_fields=["status", "confirmed_at", "confirmed_by", "updated_at"])
 
-            # Credit ledger entry (tracks receivables regardless of payment mode)
             from apps.customers.models import CreditLedger
+
+            # Credit ledger debit entry (tracks receivables regardless of payment mode)
             CreditLedger.objects.create(
                 customer=self.customer,
                 date=self.confirmed_at.date(),
@@ -155,8 +161,16 @@ class Order(AuditModel):
                 notes=f"Sale Order {self.order_number}",
             )
 
-            # Cashbook sync — only for immediate (non-credit) sales
+            # Cash/online: record immediate payment so remaining_balance = 0
             if self.payment_mode in (self.PAYMENT_MODE_CASH, self.PAYMENT_MODE_ONLINE):
+                CreditLedger.objects.create(
+                    customer=self.customer,
+                    date=self.confirmed_at.date(),
+                    entry_type="payment",
+                    amount=self.total_amount,
+                    order=self,
+                    notes=f"Immediate payment for {self.order_number}",
+                )
                 from apps.cashbook.models import CashTransaction
                 CashTransaction.objects.create(
                     transaction_type=CashTransaction.TYPE_IN,

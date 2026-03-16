@@ -142,7 +142,7 @@ class PricelistItem(AuditModel):
             old_price=old_price,
             new_price=self.price,
             version=version,
-            notes="Initial price set" if is_new else None,
+            notes="Initial price set" if is_new else "",
             changed_by=get_current_user(),
         )
 

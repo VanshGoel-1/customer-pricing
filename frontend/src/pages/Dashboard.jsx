@@ -4,6 +4,7 @@ import { getCustomers } from '../api/customers'
 import { getOrders } from '../api/orders'
 import { getProducts } from '../api/products'
 import { useAuth } from '../context/AuthContext'
+import OrderDetailModal from '../components/OrderDetailModal'
 
 function StatCard({ label, value, sub, to, color }) {
   const card = (
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const { user, isManager } = useAuth()
   const [stats, setStats] = useState({})
   const [recentOrders, setRecentOrders] = useState([])
+  const [detailOrderId, setDetailOrderId] = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -93,7 +95,7 @@ export default function Dashboard() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {recentOrders.map((o) => (
-                  <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={o.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setDetailOrderId(o.id)}>
                     <td className="px-4 py-3 font-mono font-medium text-brand-600">{o.order_number}</td>
                     <td className="px-4 py-3">{o.customer_name}</td>
                     <td className="px-4 py-3 font-medium">
@@ -114,6 +116,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <OrderDetailModal orderId={detailOrderId} onClose={() => setDetailOrderId(null)} />
     </div>
   )
 }
