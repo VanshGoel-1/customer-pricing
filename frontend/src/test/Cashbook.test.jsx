@@ -147,9 +147,8 @@ describe('Cashbook page', () => {
     // Fill amount field (identified by placeholder since labels have no htmlFor)
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '100' } })
 
-    // Select category — first option is the placeholder, second is 'sale'
-    const selects = screen.getAllByRole('combobox')
-    const categorySelect = selects[0] // first select in the modal is category
+    // Target the category select by its placeholder option text
+    const categorySelect = screen.getByDisplayValue('Select category…')
     fireEvent.change(categorySelect, { target: { value: 'sale' } })
 
     // Submit
