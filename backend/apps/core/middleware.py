@@ -11,8 +11,12 @@ class RequestUserMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # Note: request.user here is set by Django's session auth (not JWT).
+        # DRF JWT authentication runs later inside the view layer, so we cannot
+        # rely on request.user being correct at this point for API requests.
+        # Views that create AuditModel instances must pass created_by=request.user
+        # explicitly. This middleware handles the session-auth case and cleanup.
         user = getattr(request, "user", None)
-        # Only store authenticated users (not AnonymousUser)
         if user and user.is_authenticated:
             set_current_user(user)
         else:
@@ -20,6 +24,6 @@ class RequestUserMiddleware:
 
         response = self.get_response(request)
 
-        # Clear after request to avoid leaking between threads in thread pools
+        # Always clear after request to avoid leaking between threads
         set_current_user(None)
         return response

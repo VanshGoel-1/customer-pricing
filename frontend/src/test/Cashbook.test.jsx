@@ -6,10 +6,11 @@
  *  - "Add Transaction" button opens modal
  *  - Submitting the modal calls the create API and refreshes the list
  *  - Balance card shows correct arithmetic (total_in - total_out)
- *  - Type filter hides transactions of the opposite type
- *  - Unauthenticated access is not tested here (covered by ProtectedRoute)
+ *  - Type filter passes correct param to API
+ *  - Role-based delete button visibility
+ *  - Empty state and error state
  */
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -97,9 +98,7 @@ describe('Cashbook page', () => {
       expect(screen.getByText("Today's Out")).toBeInTheDocument()
     })
 
-    // Balance value from summary (₹300.00)
     expect(screen.getByText('₹300.00')).toBeInTheDocument()
-    // Cash in hand
     expect(screen.getByText('₹150.00')).toBeInTheDocument()
   })
 
@@ -108,11 +107,10 @@ describe('Cashbook page', () => {
 
     await waitFor(() => screen.getByText('Morning sales'))
 
-    // Both transactions are dated today: IN=500, OUT=200
     const cards = screen.getAllByText(/₹\d/)
     const values = cards.map((el) => el.textContent)
-    expect(values).toContain('₹500.00') // today IN
-    expect(values).toContain('₹200.00') // today OUT
+    expect(values).toContain('₹500.00')
+    expect(values).toContain('₹200.00')
   })
 
   it('renders transaction rows', async () => {
@@ -134,8 +132,9 @@ describe('Cashbook page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /add transaction/i }))
 
+    // Modal is open when the header and amount placeholder are visible
     expect(screen.getByText('Add Transaction')).toBeInTheDocument()
-    expect(screen.getByLabelText(/amount/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument()
   })
 
   it('submitting the modal calls create API and refreshes list', async () => {
@@ -145,11 +144,12 @@ describe('Cashbook page', () => {
     // Open modal
     fireEvent.click(screen.getByRole('button', { name: /add transaction/i }))
 
-    // Fill form
-    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '100' } })
+    // Fill amount field (identified by placeholder since labels have no htmlFor)
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '100' } })
 
-    // Select category (first IN category = 'sale')
-    const categorySelect = screen.getByLabelText(/category/i)
+    // Select category — first option is the placeholder, second is 'sale'
+    const selects = screen.getAllByRole('combobox')
+    const categorySelect = selects[0] // first select in the modal is category
     fireEvent.change(categorySelect, { target: { value: 'sale' } })
 
     // Submit
@@ -157,7 +157,6 @@ describe('Cashbook page', () => {
 
     await waitFor(() => {
       expect(cashbookApi.createCashInTransaction).toHaveBeenCalledTimes(1)
-      // After save, list reloads
       expect(cashbookApi.getCashTransactions).toHaveBeenCalledTimes(2)
     })
   })
@@ -166,18 +165,16 @@ describe('Cashbook page', () => {
     renderCashbook()
     await waitFor(() => screen.getByText('Morning sales'))
 
-    const typeSelect = screen.getByDisplayValue('All Types')
-    fireEvent.change(typeSelect, { target: { value: 'OUT' } })
+    fireEvent.change(screen.getByDisplayValue('All Types'), { target: { value: 'OUT' } })
 
     await waitFor(() => {
-      // Second call should include transaction_type=OUT
       const calls = cashbookApi.getCashTransactions.mock.calls
       const lastCall = calls[calls.length - 1][0]
       expect(lastCall.transaction_type).toBe('OUT')
     })
   })
 
-  it('shows "Clear filters" button when a filter is active and clears on click', async () => {
+  it('shows "Clear filters" when a filter is active and clears on click', async () => {
     renderCashbook()
     await waitFor(() => screen.getByText('Morning sales'))
 

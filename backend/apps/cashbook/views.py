@@ -65,7 +65,7 @@ class _CashbookCreateBase(generics.CreateAPIView):
         raw["transaction_type"] = self.transaction_type
         serializer = self.get_serializer(data=raw)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        serializer.save(created_by=request.user)
         return Response(
             {"success": True, "data": serializer.data},
             status=status.HTTP_201_CREATED,

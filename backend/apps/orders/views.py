@@ -54,7 +54,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = OrderCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        order = serializer.save()
+        order = serializer.save(created_by=request.user)
         return Response(
             {"success": True, "data": OrderSerializer(order).data},
             status=status.HTTP_201_CREATED,
