@@ -34,11 +34,11 @@ services:
       # ALLOWED_HOSTS is also auto-set from RENDER_EXTERNAL_HOSTNAME in production.py
       # but listing it explicitly avoids any edge-case startup errors
       - key: ALLOWED_HOSTS
-        value: customer-pricing-backend.onrender.com,localhost,127.0.0.1
+        value: customer-pricing-backend-snue.onrender.com,localhost,127.0.0.1
 
       # Must match the frontend service URL below
       - key: CORS_ALLOWED_ORIGINS
-        value: https://customer-pricing-frontend.onrender.com
+        value: https://customer-pricing-frontend-09el.onrender.com
 
       - key: DEBUG
         value: "False"
@@ -67,7 +67,7 @@ services:
     envVars:
       # Must match the backend service URL above
       - key: VITE_API_BASE_URL
-        value: https://customer-pricing-backend.onrender.com/api/v1
+        value: https://customer-pricing-backend-snue.onrender.com/api/v1
 
     headers:
       - path: /*
