@@ -23,11 +23,17 @@ export default function OrderDetailModal({ orderId, onClose }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!orderId) return
+    setOrder(null)
+    setLoading(true)
+    setError(null)
     getOrder(orderId)
       .then(({ data }) => setOrder(data.data ?? data))
       .catch(() => setError('Failed to load order details.'))
       .finally(() => setLoading(false))
   }, [orderId])
+
+  if (!orderId) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

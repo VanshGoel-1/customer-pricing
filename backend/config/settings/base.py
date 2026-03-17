@@ -126,22 +126,29 @@ CACHES = {
 }
 
 # ---------------------------------------------------------------------------
-# Database
+# Database — supports both DATABASE_URL (Render) and individual vars (Docker)
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
-        "CONN_MAX_AGE": 60,  # persistent connections — like Odoo's connection pool
-        "OPTIONS": {
-            "connect_timeout": 10,
-        },
+import os as _os
+if _os.environ.get("DATABASE_URL"):
+    # Render managed PostgreSQL provides a single DATABASE_URL
+    DATABASES = {"default": env.db("DATABASE_URL")}
+    DATABASES["default"]["CONN_MAX_AGE"] = 60
+    DATABASES["default"].setdefault("OPTIONS", {})["connect_timeout"] = 10
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST"),
+            "PORT": env("DB_PORT"),
+            "CONN_MAX_AGE": 60,
+            "OPTIONS": {
+                "connect_timeout": 10,
+            },
+        }
     }
-}
 
 # ---------------------------------------------------------------------------
 # Custom user model

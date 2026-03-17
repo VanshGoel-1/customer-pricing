@@ -27,6 +27,9 @@ django-environ==0.11.2
 # WSGI server — latest stable with security fixes
 gunicorn==23.0.0
 
+# Static file serving without a separate Nginx (used on Render)
+whitenoise==6.7.0
+
 # Testing
 pytest==8.3.5
 pytest-django==4.9.0

@@ -1,0 +1,89 @@
+# Render Blueprint — deploys all three services in one click.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# IMPORTANT: Service names must be globally unique on Render.
+# If "customer-pricing-backend" is already taken, change BOTH the `name`
+# field AND the corresponding URLs in CORS_ALLOWED_ORIGINS / VITE_API_BASE_URL.
+
+databases:
+  - name: customer-pricing-db
+    plan: free
+    databaseName: customer_pricing
+    user: pricing_user
+
+services:
+
+  # ── Django / Gunicorn backend ──────────────────────────────────────────────
+  - type: web
+    name: customer-pricing-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/v1/auth/login/
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: customer-pricing-db
+          property: connectionString
+
+      # Django secret key — Render generates a random value on first deploy
+      - key: SECRET_KEY
+        generateValue: true
+
+      # ALLOWED_HOSTS is also auto-set from RENDER_EXTERNAL_HOSTNAME in production.py
+      # but listing it explicitly avoids any edge-case startup errors
+      - key: ALLOWED_HOSTS
+        value: customer-pricing-backend.onrender.com,localhost,127.0.0.1
+
+      # Must match the frontend service URL below
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://customer-pricing-frontend.onrender.com
+
+      - key: DEBUG
+        value: "False"
+
+      - key: JWT_ACCESS_TOKEN_LIFETIME_MINUTES
+        value: "30"
+
+      - key: JWT_REFRESH_TOKEN_LIFETIME_DAYS
+        value: "7"
+
+      # Admin credentials — change ADMIN_PASSWORD after first deploy
+      - key: ADMIN_EMAIL
+        value: admin@example.com
+      - key: ADMIN_PASSWORD
+        value: ChangeMe@2026!
+
+  # ── React / Vite frontend (static site — free CDN) ────────────────────────
+  - type: web
+    name: customer-pricing-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # Must match the backend service URL above
+      - key: VITE_API_BASE_URL
+        value: https://customer-pricing-backend.onrender.com/api/v1
+
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Content-Security-Policy
+        # connect-src allows calls to the backend on *.onrender.com
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://*.onrender.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';"
+
+    routes:
+      # React SPA — send all paths to index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html

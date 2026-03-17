@@ -5,8 +5,13 @@
  */
 import axios from 'axios'
 
+// VITE_API_BASE_URL is set at build time.
+// Docker (nginx proxy):  leave unset → defaults to relative /api/v1
+// Render (separate URLs): set to https://your-backend.onrender.com/api/v1
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+
 const client = axios.create({
-  baseURL: '/api/v1',
+  baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -54,7 +59,7 @@ client.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post('/api/v1/auth/refresh/', { refresh })
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh/`, { refresh })
         localStorage.setItem('access', data.access)
         if (data.refresh) localStorage.setItem('refresh', data.refresh)
         processQueue(null, data.access)
