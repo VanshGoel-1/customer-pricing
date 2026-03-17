@@ -1,7 +1,8 @@
 """
-One-time script to create the initial admin user.
+Ensures the admin user exists and credentials match the current env vars.
 Run via: python create_admin.py
-Only works if no admin user exists yet.
+- Creates the admin if none exists.
+- Updates email, name, and password if they differ from env vars.
 """
 import os
 import django
@@ -11,12 +12,18 @@ django.setup()
 
 from apps.users.models import User  # noqa: E402
 
-if not User.objects.filter(role="admin").exists():
-    User.objects.create_superuser(
-        email=os.environ.get("ADMIN_EMAIL", "admin@example.com"),
-        name=os.environ.get("ADMIN_NAME", "Administrator"),
-        password=os.environ.get("ADMIN_PASSWORD", "Admin@2026!"),
-    )
+email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+name = os.environ.get("ADMIN_NAME", "Administrator")
+password = os.environ.get("ADMIN_PASSWORD", "Admin@2026!")
+
+admin = User.objects.filter(role="admin").first()
+if admin is None:
+    User.objects.create_superuser(email=email, name=name, password=password)
     print("Admin user created.")
 else:
-    print("Admin already exists — skipping.")
+    admin.email = email
+    admin.name = name
+    admin.set_password(password)
+    admin.is_active = True
+    admin.save(update_fields=["email", "name", "password", "is_active", "updated_at"])
+    print("Admin credentials synced.")

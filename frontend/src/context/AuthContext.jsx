@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react' // useRef kept for lastActivityTime
 import { login as apiLogin, logout as apiLogout } from '../api/auth'
 
-const AuthContext = createContext(null)
+export const AuthContext = createContext(null)
 
 // Auto-logout after 15 minutes of inactivity
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000
