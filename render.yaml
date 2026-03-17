@@ -20,7 +20,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
-    healthCheckPath: /api/v1/auth/login/
+    healthCheckPath: /health/
     envVars:
       - key: DATABASE_URL
         fromDatabase:
