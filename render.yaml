@@ -55,7 +55,7 @@ services:
       - key: ADMIN_EMAIL
         value: admin@example.com
       - key: ADMIN_PASSWORD
-        value: ChangeMe@2026!
+        value: Admin@2026!
 
   # ── React / Vite frontend (static site — free CDN) ────────────────────────
   - type: web
