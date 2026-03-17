@@ -50,6 +50,8 @@ services:
         value: "7"
 
       # Admin credentials — change ADMIN_PASSWORD after first deploy
+      - key: ADMIN_NAME
+        value: Administrator
       - key: ADMIN_EMAIL
         value: admin@example.com
       - key: ADMIN_PASSWORD
