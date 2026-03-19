@@ -11,6 +11,7 @@ import NewBill from './pages/NewBill'
 import Orders from './pages/Orders'
 import PriceHistory from './pages/PriceHistory'
 import Products from './pages/Products'
+import QuickProducts from './pages/QuickProducts'
 import Users from './pages/Users'
 
 function AppRoutes() {
@@ -29,6 +30,7 @@ function AppRoutes() {
       <Route path="/customers/:id" element={<ProtectedRoute requireRole="manager"><Layout><CustomerProfile /></Layout></ProtectedRoute>} />
       <Route path="/products" element={<ProtectedRoute requireRole="manager"><Layout><Products /></Layout></ProtectedRoute>} />
       <Route path="/price-history" element={<ProtectedRoute requireRole="manager"><Layout><PriceHistory /></Layout></ProtectedRoute>} />
+      <Route path="/quick-products" element={<ProtectedRoute requireRole="manager"><Layout><QuickProducts /></Layout></ProtectedRoute>} />
 
       {/* Admin only */}
       <Route path="/users" element={<ProtectedRoute requireRole="admin"><Layout><Users /></Layout></ProtectedRoute>} />

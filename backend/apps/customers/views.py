@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsManagerOrAbove, ReadOnly
+from apps.core.permissions import IsAnyRole, IsManagerOrAbove, ReadOnly
 from apps.core.throttling import PaymentPostThrottle, PhoneLookupThrottle
 
 # E.164-style: optional leading +, then 7–15 digits only.
@@ -33,13 +33,17 @@ class CustomerFilter(django_filters.FilterSet):
 class CustomerListCreateView(generics.ListCreateAPIView):
     """
     GET  — all roles (cashier needs customer search on billing screen)
-    POST — manager/admin only
+    POST — all roles (cashier creates customers inline during billing)
     """
     queryset = Customer.objects.all()
-    permission_classes = [IsAuthenticated, IsManagerOrAbove | ReadOnly]
     filterset_class = CustomerFilter
     search_fields = ["name", "phone", "email"]
     ordering_fields = ["name", "created_at"]
+
+    def get_permissions(self):
+        if self.request.method in ("GET", "HEAD", "OPTIONS"):
+            return [IsAuthenticated()]          # any logged-in user can search
+        return [IsAuthenticated(), IsAnyRole()] # any role can create inline
 
     def get_serializer_class(self):
         if self.request.user.role == "cashier":

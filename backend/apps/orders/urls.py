@@ -6,6 +6,7 @@ from .views import (
     OrderCancelView,
     OrderConfirmView,
     OrderDetailView,
+    OrderItemDeleteView,
     OrderItemListCreateView,
     OrderListCreateView,
     OrderMarkPaidView,
@@ -20,4 +21,5 @@ urlpatterns = [
     path("<int:pk>/cancel/", OrderCancelView.as_view(), name="order-cancel"),
     path("<int:pk>/payment/", OrderRecordPaymentView.as_view(), name="order-payment"),
     path("<int:order_pk>/items/", OrderItemListCreateView.as_view(), name="order-items"),
+    path("<int:order_pk>/items/<int:pk>/", OrderItemDeleteView.as_view(), name="order-item-delete"),
 ]

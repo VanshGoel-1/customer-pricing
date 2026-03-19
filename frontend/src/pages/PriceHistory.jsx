@@ -27,7 +27,7 @@ export default function PriceHistory() {
   useEffect(() => { load() }, [filter.customer])
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold">Price History</h2>
       <p className="text-sm text-gray-500">Immutable audit log of every price change — who changed what, when.</p>
 

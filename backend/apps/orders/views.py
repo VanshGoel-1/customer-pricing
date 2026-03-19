@@ -136,9 +136,13 @@ class OrderMarkPaidView(APIView):
 
 
 class OrderCancelView(APIView):
-    """POST /api/v1/orders/{id}/cancel/ — manager/admin only."""
-    permission_classes = [IsAuthenticated, IsManagerOrAbove]
-    throttle_classes = [OrderActionThrottle]  # 10/min per user — ledger-flooding guard
+    """
+    POST /api/v1/orders/{id}/cancel/
+    Managers can cancel any draft order.
+    Cashiers can cancel only their own draft orders.
+    """
+    permission_classes = [IsAuthenticated, IsAnyRole]
+    throttle_classes = [OrderActionThrottle]
 
     def post(self, request, pk):
         try:
@@ -148,6 +152,14 @@ class OrderCancelView(APIView):
                 {"success": False, "error": {"code": "not_found", "message": "Order not found."}},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        if request.user.role == "cashier" and order.created_by != request.user:
+            return Response(
+                {"success": False, "error": {"code": "permission_denied", "message": "You can only cancel your own orders."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.role == "cashier" and order.status not in (Order.STATUS_DRAFT,):
+            # Managers can only cancel drafts too — confirmed orders need mark-paid flow
+            pass
         try:
             order.cancel()
         except ValueError as e:
@@ -229,6 +241,30 @@ class OrderRecordPaymentView(APIView):
                 order.save(update_fields=["status", "updated_at"])
         order.refresh_from_db()
         return Response({"success": True, "data": OrderSerializer(order).data})
+
+
+class OrderItemDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/v1/orders/{order_pk}/items/{pk}/
+    Remove a line from a draft order. Recalculates total after deletion.
+    Cashiers can only remove items from their own orders.
+    """
+    permission_classes = [IsAuthenticated, IsAnyRole]
+
+    def get_object(self):
+        from django.shortcuts import get_object_or_404
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+        item = get_object_or_404(OrderItem, pk=self.kwargs["pk"], order_id=self.kwargs["order_pk"])
+        if item.order.status != Order.STATUS_DRAFT:
+            raise ValidationError("Items can only be removed from draft orders.")
+        if self.request.user.role == "cashier" and item.order.created_by != self.request.user:
+            raise PermissionDenied("You can only modify your own orders.")
+        return item
+
+    def perform_destroy(self, instance):
+        order = instance.order
+        instance.delete()
+        order.recalculate_total()
 
 
 class OrderItemListCreateView(generics.ListCreateAPIView):

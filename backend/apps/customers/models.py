@@ -26,8 +26,12 @@ class Customer(AuditModel):
     ]
 
     name = models.CharField(max_length=255, db_index=True)
+    last_name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=20, unique=True, db_index=True)
     email = models.EmailField(blank=True)
+    company_name = models.CharField(max_length=255, blank=True)
+    sales_rep = models.CharField(max_length=150, blank=True)
+    tax_tin = models.CharField(max_length=50, blank=True)
     customer_type = models.CharField(
         max_length=20, choices=CUSTOMER_TYPES, default="retail", db_index=True
     )

@@ -10,7 +10,7 @@ export default function Customers() {
   const [filter, setFilter] = useState(searchParams.get('filter') || 'active')
   const [actionError, setActionError] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', email: '', customer_type: 'retail', credit_limit: 0 })
+  const [form, setForm] = useState({ name: '', last_name: '', phone: '', email: '', company_name: '', sales_rep: '', tax_tin: '', customer_type: 'retail', credit_limit: 0 })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -39,7 +39,7 @@ export default function Customers() {
     try {
       await createCustomer(form)
       setShowForm(false)
-      setForm({ name: '', phone: '', email: '', customer_type: 'retail', credit_limit: 0 })
+      setForm({ name: '', last_name: '', phone: '', email: '', company_name: '', sales_rep: '', tax_tin: '', customer_type: 'retail', credit_limit: 0 })
       load(search, filter)
     } catch (err) {
       const detail = err.response?.data?.error?.detail || {}
@@ -61,7 +61,7 @@ export default function Customers() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {actionError && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {actionError}
@@ -77,36 +77,94 @@ export default function Customers() {
 
       {showForm && (
         <div className="card">
-          <h3 className="font-semibold mb-4">New Customer</h3>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input required maxLength={255} className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-semibold text-gray-800">Add Customer</h3>
+            <button type="button" onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <form onSubmit={handleCreate} className="space-y-3">
+            {/* Row 1: Phone | Email */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <input required maxLength={20} type="tel" placeholder="Phone Number *" className="input pl-9" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <input type="email" maxLength={254} placeholder="Email Address" className="input pl-9" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-              <input required maxLength={20} pattern="^\+?\d[\d\s\-]{6,18}$" title="7–15 digits, optional leading +" className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+
+            {/* Row 2: First Name | Last Name */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <input required maxLength={255} placeholder="* First Name" className="input pl-9" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <input maxLength={150} placeholder="Last Name" className="input pl-9" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" maxLength={254} className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+
+            {/* Row 3: Company | Sales Rep | Tax/TIN */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <input maxLength={255} placeholder="Company Name" className="input pl-9" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+              </div>
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <input maxLength={150} placeholder="Sales Rep" className="input pl-9" value={form.sales_rep} onChange={(e) => setForm({ ...form, sales_rep: e.target.value })} />
+              </div>
+              <div className="relative flex items-center">
+                <svg className="absolute left-3 w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <input maxLength={50} placeholder="Tax (TIN)" className="input pl-9" value={form.tax_tin} onChange={(e) => setForm({ ...form, tax_tin: e.target.value })} />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+
+            {/* Row 4: Type | Credit Limit */}
+            <div className="grid grid-cols-2 gap-3">
               <select className="input" value={form.customer_type} onChange={(e) => setForm({ ...form, customer_type: e.target.value })}>
                 {['wholesale','restaurant','retail','walkin','distributor','other'].map((t) => (
                   <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
                 ))}
               </select>
+              <input type="number" min="0" step="0.01" placeholder="Credit Limit" className="input" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: e.target.value })} />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Credit Limit</label>
-              <input type="number" min="0" step="0.01" className="input" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: e.target.value })} />
-            </div>
-            {formError && <p className="col-span-2 text-sm text-red-600">{formError}</p>}
-            <div className="col-span-2 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
-              <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Create'}</button>
+
+            {formError && <p className="text-sm text-red-600">{formError}</p>}
+
+            <div className="flex items-center justify-between pt-2">
+              <button type="button" className="text-sm text-brand-600 hover:underline flex items-center gap-1">
+                <span className="text-lg font-light">+</span> Add Address
+              </button>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
+                <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {saving ? 'Saving…' : 'Add'}
+                </button>
+              </div>
             </div>
           </form>
         </div>

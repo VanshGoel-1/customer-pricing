@@ -7,5 +7,5 @@ export const confirmOrder = (id) => client.post(`/orders/${id}/confirm/`)
 export const markPaid = (id) => client.post(`/orders/${id}/mark-paid/`)
 export const cancelOrder = (id) => client.post(`/orders/${id}/cancel/`)
 export const recordPayment = (id, amount, mode = 'cash') => client.post(`/orders/${id}/payment/`, { amount, mode })
-export const addOrderItem = (orderId, data) =>
-  client.post(`/orders/${orderId}/items/`, data)
+export const addOrderItem = (orderId, data) => client.post(`/orders/${orderId}/items/`, data)
+export const deleteOrderItem = (orderId, itemId) => client.delete(`/orders/${orderId}/items/${itemId}/`)

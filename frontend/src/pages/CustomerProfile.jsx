@@ -101,7 +101,7 @@ export default function CustomerProfile() {
   const ledgerTypeColor = { credit: 'text-red-600', payment: 'text-green-600', adjustment: 'text-amber-600' }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="card flex items-start justify-between">
         <div>

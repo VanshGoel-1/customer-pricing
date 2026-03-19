@@ -63,6 +63,10 @@ export default function Sidebar() {
           <NavItem to="/price-history" label="Price History" icon={
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           } />
+
+          <NavItem to="/quick-products" label="Quick Products" icon={
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          } />
         </>}
 
         {isAdmin && <>

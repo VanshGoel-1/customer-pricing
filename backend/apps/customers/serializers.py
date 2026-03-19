@@ -33,7 +33,9 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = [
-            "id", "name", "phone", "email", "customer_type", "customer_type_display",
+            "id", "name", "last_name", "phone", "email",
+            "company_name", "sales_rep", "tax_tin",
+            "customer_type", "customer_type_display",
             "credit_limit", "notes", "is_active",
             "outstanding_balance", "is_over_credit_limit",
             "created_at", "updated_at",

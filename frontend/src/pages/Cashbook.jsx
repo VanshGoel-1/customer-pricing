@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { deleteCashTransaction, getCashbookSummary, getCashTransactions } from '../api/cashbook'
 import { useAuth } from '../context/AuthContext'
 import AddTransactionModal from '../components/AddTransactionModal'
+import CashTransactionDetailPanel from '../components/CashTransactionDetailPanel'
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -41,6 +42,7 @@ export default function Cashbook() {
 
   const [deletingId, setDeletingId]   = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  const [selectedTx, setSelectedTx]   = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -86,7 +88,7 @@ export default function Cashbook() {
   const todayOut  = todayTxns.filter((t) => t.transaction_type === 'OUT').reduce((s, t) => s + Number(t.amount), 0)
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -169,8 +171,14 @@ export default function Cashbook() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {transactions.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{t.transaction_date}</td>
+                <tr key={t.id} className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedTx(t)}>
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                    <p>{t.transaction_date}</p>
+                    {t.created_at && (
+                      <p className="text-gray-400">{new Date(t.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`badge ${t.transaction_type === 'IN'
                       ? 'bg-green-100 text-green-700'
@@ -195,7 +203,7 @@ export default function Cashbook() {
                     {t.transaction_type === 'IN' ? '+' : '−'} ₹{fmt(t.amount)}
                   </td>
                   {isManager && (
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleDelete(t.id)}
                         disabled={deletingId === t.id}
@@ -218,6 +226,11 @@ export default function Cashbook() {
           onSaved={load}
         />
       )}
+
+      <CashTransactionDetailPanel
+        tx={selectedTx}
+        onClose={() => setSelectedTx(null)}
+      />
     </div>
   )
 }

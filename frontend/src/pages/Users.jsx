@@ -43,7 +43,7 @@ export default function Users() {
   const roleColor = { admin: 'bg-purple-100 text-purple-700', manager: 'bg-blue-100 text-blue-700', cashier: 'bg-gray-100 text-gray-600' }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Users</h2>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary">

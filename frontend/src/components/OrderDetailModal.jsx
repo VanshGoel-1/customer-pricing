@@ -64,9 +64,10 @@ export default function OrderDetailModal({ orderId, onClose }) {
                   <p className="text-gray-500">{order.customer_phone}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Date</p>
-                  <p>{new Date(order.created_at).toLocaleDateString('en-IN', {
+                  <p className="text-xs text-gray-400">Created</p>
+                  <p>{new Date(order.created_at).toLocaleString('en-IN', {
                     day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: true,
                   })}</p>
                 </div>
                 {order.confirmed_at && (
@@ -74,7 +75,7 @@ export default function OrderDetailModal({ orderId, onClose }) {
                     <p className="text-xs text-gray-400">Confirmed at</p>
                     <p>{new Date(order.confirmed_at).toLocaleString('en-IN', {
                       day: '2-digit', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
+                      hour: '2-digit', minute: '2-digit', hour12: true,
                     })}</p>
                   </div>
                 )}
@@ -132,6 +133,21 @@ export default function OrderDetailModal({ orderId, onClose }) {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* Unit totals */}
+            {(order.total_weight_kg > 0 || order.total_volume_l > 0 || order.total_pcs > 0) && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {order.total_weight_kg > 0 && (
+                  <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">Weight: {order.total_weight_kg} kg</span>
+                )}
+                {order.total_volume_l > 0 && (
+                  <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded">Volume: {order.total_volume_l} L</span>
+                )}
+                {order.total_pcs > 0 && (
+                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded">Pcs: {order.total_pcs}</span>
+                )}
               </div>
             )}
 

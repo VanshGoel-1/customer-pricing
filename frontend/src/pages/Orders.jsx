@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cancelOrder, getOrders, markPaid, recordPayment } from '../api/orders'
 import { useAuth } from '../context/AuthContext'
 import OrderDetailModal from '../components/OrderDetailModal'
@@ -16,8 +17,17 @@ const modeColor = {
   credit: 'bg-amber-100 text-amber-700',
 }
 
+const fmtDateTime = (iso) => {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  })
+}
+
 export default function Orders() {
   const { isManager } = useAuth()
+  const navigate = useNavigate()
   const [orders, setOrders]           = useState([])
   const [loading, setLoading]         = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
@@ -87,7 +97,7 @@ export default function Orders() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {actionError && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {actionError}
@@ -157,7 +167,7 @@ export default function Orders() {
                     <td className="px-4 py-3">
                       <span className={`badge ${statusColor[o.status]}`}>{o.status_display}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{new Date(o.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDateTime(o.created_at)}</td>
                     {isManager && (
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-col gap-2">
@@ -196,12 +206,20 @@ export default function Orders() {
                             </button>
                           )}
                           {o.status === 'draft' && (
-                            <button
-                              onClick={(e) => handleCancel(o.id, e)}
-                              className="text-xs text-red-500 hover:underline"
-                            >
-                              Cancel
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/bill?draft=${o.id}`) }}
+                                className="text-xs text-brand-600 hover:underline font-medium"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => handleCancel(o.id, e)}
+                                className="text-xs text-red-500 hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>

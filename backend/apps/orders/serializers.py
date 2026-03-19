@@ -11,13 +11,18 @@ class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
     product_sku = serializers.CharField(source="product.sku", read_only=True)
     unit = serializers.CharField(source="product.unit", read_only=True)
+    piece_weight_grams = serializers.DecimalField(
+        source="product.piece_weight_grams", max_digits=8, decimal_places=2,
+        read_only=True, allow_null=True,
+    )
     line_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
             "id", "product", "product_name", "product_sku", "unit",
-            "quantity", "unit_price", "is_price_overridden", "line_total", "notes",
+            "piece_weight_grams", "quantity", "unit_price", "is_price_overridden",
+            "line_total", "notes",
         ]
         read_only_fields = ["id", "line_total"]
 
@@ -86,14 +91,44 @@ class OrderSerializer(serializers.ModelSerializer):
     confirmed_by_name = serializers.CharField(source="confirmed_by.name", read_only=True, default=None)
     total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     remaining_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    total_weight_kg = serializers.SerializerMethodField()
+    total_volume_l  = serializers.SerializerMethodField()
+    total_pcs       = serializers.SerializerMethodField()
+
+    def get_total_weight_kg(self, obj):
+        total = 0.0
+        for item in obj.items.all():
+            unit = item.product.unit.lower()
+            qty = float(item.quantity)
+            if unit == 'kg':   total += qty
+            elif unit == 'g':  total += qty / 1000
+        return round(total, 3)
+
+    def get_total_volume_l(self, obj):
+        total = 0.0
+        for item in obj.items.all():
+            unit = item.product.unit.lower()
+            qty = float(item.quantity)
+            if unit == 'l':    total += qty
+            elif unit == 'ml': total += qty / 1000
+        return round(total, 3)
+
+    def get_total_pcs(self, obj):
+        total = 0.0
+        for item in obj.items.all():
+            unit = item.product.unit.lower()
+            if unit not in ('kg', 'g', 'l', 'ml'):
+                total += float(item.quantity)
+        return round(total, 2)
 
     class Meta:
         model = Order
         fields = [
             "id", "order_number", "customer", "customer_name", "customer_phone",
             "status", "status_display", "payment_mode", "payment_mode_display",
-            "total_amount", "total_paid", "remaining_balance", "notes",
-            "confirmed_at", "confirmed_by", "confirmed_by_name",
+            "total_amount", "total_paid", "remaining_balance",
+            "total_weight_kg", "total_volume_l", "total_pcs",
+            "notes", "confirmed_at", "confirmed_by", "confirmed_by_name",
             "created_at", "updated_at", "items",
         ]
         read_only_fields = [

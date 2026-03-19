@@ -58,6 +58,11 @@ class Product(AuditModel):
     description = models.TextField(blank=True)
     base_price = models.DecimalField(max_digits=12, decimal_places=2)
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default="pcs")
+    piece_weight_grams = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        null=True, blank=True,
+        help_text="Weight per piece in grams (optional — shown as estimated weight on bills)",
+    )
     is_active = models.BooleanField(default=True, db_index=True)
 
     class Meta:
@@ -73,3 +78,25 @@ class Product(AuditModel):
 
     def __str__(self):
         return f"[{self.sku}] {self.name}"
+
+
+class QuickProduct(AuditModel):
+    """
+    Curated list of products shown as quick-tap cards on the billing screen.
+    Shared across all users. Max 20 items enforced in the view.
+    Lower sort_order appears first.
+    """
+    product    = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="quick_product",
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "product__name"]
+        verbose_name = "Quick Product"
+        verbose_name_plural = "Quick Products"
+
+    def __str__(self):
+        return f"Quick: {self.product.name}"

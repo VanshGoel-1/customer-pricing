@@ -3,10 +3,15 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.core.permissions import IsManagerOrAbove, ReadOnly
+from apps.core.permissions import IsAnyRole, IsManagerOrAbove, ReadOnly
 
-from .models import Product, ProductCategory
-from .serializers import ProductCategorySerializer, ProductLookupSerializer, ProductSerializer
+from .models import Product, ProductCategory, QuickProduct
+from .serializers import (
+    ProductCategorySerializer,
+    ProductLookupSerializer,
+    ProductSerializer,
+    QuickProductSerializer,
+)
 
 
 class ProductCategoryListCreateView(generics.ListCreateAPIView):
@@ -89,3 +94,39 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         product.is_active = False
         product.save(update_fields=["is_active", "updated_at"])
         return Response({"success": True, "message": "Product deactivated."})
+
+
+class QuickProductListView(generics.ListAPIView):
+    """GET /api/v1/products/quick/ — curated quick-access list (all roles)."""
+    serializer_class   = QuickProductSerializer
+    permission_classes = [IsAuthenticated, IsAnyRole]
+    queryset           = QuickProduct.objects.select_related("product").order_by("sort_order", "product__name")
+
+
+class QuickProductManageView(generics.ListCreateAPIView):
+    """
+    GET  /api/v1/products/quick/manage/ — list with quick_id for delete (manager+)
+    POST /api/v1/products/quick/manage/ — add a product to the quick list (manager+)
+    """
+    serializer_class   = QuickProductSerializer
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
+    queryset           = QuickProduct.objects.select_related("product").order_by("sort_order", "product__name")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+        return Response(
+            {"success": True, "data": QuickProductSerializer(obj).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class QuickProductDeleteView(generics.DestroyAPIView):
+    """DELETE /api/v1/products/quick/manage/{id}/ — remove from quick list (manager+)."""
+    queryset           = QuickProduct.objects.all()
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
+
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        return Response({"success": True, "message": "Removed from quick list."})
