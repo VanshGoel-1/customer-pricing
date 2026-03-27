@@ -85,7 +85,8 @@ docs/screenshots/Screenshot 2026-03-14 190050.png
 
 # Local temp testing tools
 act.exe
-act.zip
+act*.zip
+act*.tar.gz
 act_bin/
 .actrc
 test_venv/
