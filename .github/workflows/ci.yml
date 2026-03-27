@@ -48,7 +48,7 @@ jobs:
       - name: Run Migrations
         run: |
           cd backend
-          python manage.py makemigrations core users products customers pricing orders cashbook --no-input
+          python manage.py makemigrations --no-input
           python manage.py migrate --no-input
 
       - name: Run Tests
