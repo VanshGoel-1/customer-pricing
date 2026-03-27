@@ -61,7 +61,7 @@ LOCAL_APPS = [
     "apps.suppliers",
 ]
 
-INSTALLED_APPS = LOCAL_APPS + DJANGO_APPS + THIRD_PARTY_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # ---------------------------------------------------------------------------
 # Middleware — corsheaders MUST be first
