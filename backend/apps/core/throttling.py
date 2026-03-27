@@ -110,3 +110,20 @@ class CashbookCreateThrottle(UserRateThrottle):
     per minute; 30/min blocks automated flooding of the cash ledger.
     """
     scope = "cashbook_create"
+
+
+class SupplierWriteThrottle(UserRateThrottle):
+    """
+    20 supplier create/update calls/min per user.
+    Prevents automated flooding of the supplier catalogue.
+    """
+    scope = "supplier_write"
+
+
+class PurchaseCreateThrottle(UserRateThrottle):
+    """
+    20 purchase invoice creates/min per user.
+    A manager creating real invoices needs at most a handful per minute;
+    anything faster is likely automated abuse.
+    """
+    scope = "purchase_create"

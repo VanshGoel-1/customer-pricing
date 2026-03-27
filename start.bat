@@ -151,7 +151,7 @@ echo   Application is ready!
 echo.
 echo   URL:      http://localhost
 echo   Email:    admin@example.com
-echo   Password: Admin@2026!
+echo   Password: Admin@2026^^!
 echo.
 echo   Change the password after your first login.
 echo  ============================================

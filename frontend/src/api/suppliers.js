@@ -1,0 +1,18 @@
+import client from './client'
+
+export const getSuppliers = (params) => client.get('/suppliers/', { params })
+export const createSupplier = (data) => client.post('/suppliers/', data)
+export const getSupplier = (id) => client.get(`/suppliers/${id}/`)
+export const updateSupplier = (id, data) => client.patch(`/suppliers/${id}/`, data)
+export const deleteSupplier = (id) => client.delete(`/suppliers/${id}/`)
+export const getSupplierPayments = (id) => client.get(`/suppliers/${id}/payments/`)
+export const createSupplierPayment = (id, data) => client.post(`/suppliers/${id}/payments/`, data)
+export const getSupplierLedger = (id) => client.get(`/suppliers/${id}/ledger/`)
+export const getSupplierProducts = (id) => client.get(`/suppliers/${id}/products/`)
+export const linkSupplierProduct = (id, data) => client.post(`/suppliers/${id}/products/`, data)
+export const getPurchases = (params) => client.get('/purchases/', { params })
+export const createPurchase = (data) => client.post('/purchases/', data)
+export const getPurchase = (id) => client.get(`/purchases/${id}/`)
+export const confirmPurchase = (id) => client.post(`/purchases/${id}/confirm/`)
+export const markPurchasePaid = (id) => client.post(`/purchases/${id}/mark-paid/`)
+export const deletePurchase = (id) => client.delete(`/purchases/${id}/`)

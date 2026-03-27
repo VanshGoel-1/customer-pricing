@@ -25,6 +25,7 @@ const CATEGORY_LABELS = {
   manual_in:        'Manual In',
   expense:          'Expense',
   manual_out:       'Manual Out',
+  supplier_payment: 'Supplier Payment',
 }
 
 export default function Cashbook() {

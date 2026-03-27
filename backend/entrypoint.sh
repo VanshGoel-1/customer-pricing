@@ -24,7 +24,7 @@ done
 echo "[entrypoint] PostgreSQL is ready."
 
 echo "[entrypoint] Creating migrations for custom apps..."
-python manage.py makemigrations core users products customers pricing orders cashbook --no-input
+python manage.py makemigrations core users products customers pricing orders cashbook suppliers --no-input
 
 echo "[entrypoint] Running migrations..."
 python manage.py migrate --no-input
@@ -53,7 +53,56 @@ c.execute(\"ALTER TABLE customers_customer ADD COLUMN IF NOT EXISTS company_name
 c.execute(\"ALTER TABLE customers_customer ADD COLUMN IF NOT EXISTS sales_rep    VARCHAR(150) NOT NULL DEFAULT ''\")
 c.execute(\"ALTER TABLE customers_customer ADD COLUMN IF NOT EXISTS tax_tin      VARCHAR(50)  NOT NULL DEFAULT ''\")
 
+c.execute(\"ALTER TABLE suppliers_purchaseinvoice ADD COLUMN IF NOT EXISTS cashbook_entry_id INTEGER REFERENCES cashbook_cashtransaction(id) ON DELETE SET NULL\")
+
 print('[entrypoint] Schema patches applied.')
+"
+
+echo "[entrypoint] Backfilling cashbook entries for supplier payments and paid invoices..."
+python manage.py shell -c "
+from apps.suppliers.models import SupplierPayment, PurchaseInvoice
+from apps.cashbook.models import CashTransaction
+
+# ── SupplierPayments without a cashbook entry ──────────────────────────────
+for pmt in SupplierPayment.objects.filter(cashbook_entry__isnull=True).select_related('supplier'):
+    cashbook_mode = (
+        pmt.mode if pmt.mode in (CashTransaction.MODE_CASH, CashTransaction.MODE_ONLINE)
+        else CashTransaction.MODE_CASH
+    )
+    desc = 'Payment to ' + pmt.supplier.name
+    if pmt.reference_invoice_id:
+        inv = pmt.reference_invoice
+        if inv.invoice_number:
+            desc += ' — Inv #' + inv.invoice_number
+    entry = CashTransaction.objects.create(
+        transaction_type=CashTransaction.TYPE_OUT,
+        category='supplier_payment',
+        amount=pmt.amount,
+        mode=cashbook_mode,
+        description=desc,
+        transaction_date=pmt.payment_date,
+        created_by=pmt.created_by,
+    )
+    SupplierPayment.objects.filter(pk=pmt.pk).update(cashbook_entry_id=entry.pk)
+    print('[backfill] Created cashbook entry for SupplierPayment', pmt.pk)
+
+# ── Paid invoices without a cashbook entry ─────────────────────────────────
+for inv in PurchaseInvoice.objects.filter(status='paid', cashbook_entry__isnull=True).select_related('supplier'):
+    ref = inv.invoice_number or str(inv.pk)
+    paid_date = inv.paid_at.date() if inv.paid_at else inv.invoice_date
+    entry = CashTransaction.objects.create(
+        transaction_type=CashTransaction.TYPE_OUT,
+        category='supplier_payment',
+        amount=inv.total_amount,
+        mode=CashTransaction.MODE_CASH,
+        description='Invoice paid: #' + ref + ' — ' + inv.supplier.name,
+        transaction_date=paid_date,
+        created_by=inv.created_by,
+    )
+    PurchaseInvoice.objects.filter(pk=inv.pk).update(cashbook_entry_id=entry.pk)
+    print('[backfill] Created cashbook entry for PurchaseInvoice', inv.pk)
+
+print('[entrypoint] Cashbook backfill done.')
 "
 
 echo "[entrypoint] Collecting static files..."

@@ -30,8 +30,9 @@ IN_CATEGORIES = [
 ]
 
 OUT_CATEGORIES = [
-    ("expense",    "Expense"),
-    ("manual_out", "Manual Out"),
+    ("expense",          "Expense"),
+    ("manual_out",       "Manual Out"),
+    ("supplier_payment", "Supplier Payment"),
 ]
 
 _IN_CATEGORY_KEYS  = {c[0] for c in IN_CATEGORIES}

@@ -58,6 +58,7 @@ LOCAL_APPS = [
     "apps.pricing",
     "apps.orders",
     "apps.cashbook",
+    "apps.suppliers",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -241,6 +242,8 @@ REST_FRAMEWORK = {
         "payment_post":   "5/min",     # fake payment posting
         "price_set":      "20/min",    # price-history spam
         "cashbook_create": "30/min",   # cashbook entry flood
+        "supplier_write":  "20/min",   # supplier catalogue flooding
+        "purchase_create": "20/min",   # purchase invoice flooding
     },
 }
 

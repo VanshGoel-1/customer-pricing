@@ -27,7 +27,7 @@ A production-grade, standalone customer-based dynamic pricing application built 
 
 ## Overview
 
-Customer Pricing System allows businesses to manage **per-customer product pricing**, track every price change with a full **immutable audit trail**, monitor **customer credit balances**, process bills from a fast **cashier screen**, and record all daily cash flow in a built-in **cashbook** — all in one locally-deployed app.
+Customer Pricing System allows businesses to manage **per-customer product pricing**, track every price change with a full **immutable audit trail**, monitor **customer credit balances**, process bills from a fast **cashier screen**, manage **suppliers and purchase invoices**, and record all daily cash flow in a built-in **cashbook** — all in one locally-deployed app.
 
 Each customer gets a dedicated pricelist. When the cashier selects a customer on the billing screen and searches for a product, the customer-specific price auto-fills. Prices can be overridden per transaction, and every change is permanently logged.
 
@@ -88,6 +88,13 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 - Credit limit tracking with over-limit detection
 - Post payments directly from the Customer Profile screen
 
+### Suppliers & Purchases
+- Full **supplier management** with contact details and supplier-specific product catalogues
+- Track **purchase invoices** with itemised lines and draft/confirmed/paid lifecycle
+- **Supplier Ledger** — unified view of all purchase invoices and payments per supplier
+- **Supplier Payments** — record payments made to suppliers, auto-syncing with the Cashbook (`supplier_payment` category)
+- **Purchase Invoice mark paid** — automatically creates a Cashbook OUT entry
+
 ### Role-Based Access
 | Feature | Cashier | Manager | Admin |
 |---|:---:|:---:|:---:|
@@ -102,6 +109,7 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 | Price History | — | ✓ | ✓ |
 | Set Prices | — | ✓ | ✓ |
 | User Management | — | — | ✓ |
+| Suppliers & Purchases | — | ✓ | ✓ |
 
 ### Security
 - JWT authentication with **automatic silent refresh**
@@ -148,9 +156,9 @@ Each customer gets a dedicated pricelist. When the cashier selects a customer on
 │  ┌────────┐ ┌─────────┐ ┌──────────┐ ┌────────────┐     │
 │  │ users  │ │products │ │customers │ │  pricing   │     │
 │  └────────┘ └─────────┘ └──────────┘ └────────────┘     │
-│        ┌──────────┐             ┌──────────────┐        │
-│        │  orders  │────sync────>│   cashbook   │        │
-│        └──────────┘             └──────────────┘        │
+│  ┌──────────┐ ┌───────────┐     ┌──────────────┐        │
+│  │  orders  │ │ suppliers │────>│   cashbook   │        │
+│  └──────────┘ └───────────┘     └──────────────┘        │
 └────────────────────────┬────────────────────────────────┘
                          │ TCP :5432
 ┌────────────────────────▼────────────────────────────────┐
@@ -444,6 +452,28 @@ All endpoints are prefixed with `/api/v1/`. All responses follow a consistent en
   "effective_from": "2026-03-09"
 }
 ```
+
+### Suppliers
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| `GET` | `/suppliers/` | List suppliers | All |
+| `POST` | `/suppliers/` | Create supplier | Manager+ |
+| `GET` | `/suppliers/{id}/` | Get supplier detail | All |
+| `PATCH`| `/suppliers/{id}/` | Update supplier | Manager+ |
+| `GET` | `/suppliers/{id}/ledger/` | Supplier ledger entries | All |
+| `POST` | `/suppliers/{id}/payments/`| Record payment | Manager+ |
+| `GET` | `/suppliers/{id}/products/`| Supplier product catalogue | Manager+ |
+
+### Purchase Invoices
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| `GET` | `/purchases/` | List all invoices | All |
+| `POST` | `/purchases/` | Create draft invoice | Manager+ |
+| `GET` | `/purchases/{id}/` | Invoice detail | Manager+ |
+| `POST` | `/purchases/{id}/confirm/` | Confirm invoice | Manager+ |
+| `POST` | `/purchases/{id}/mark-paid/` | Mark paid + cashbook entry | Manager+ |
 
 ---
 
