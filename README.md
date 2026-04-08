@@ -1,4 +1,4 @@
-# Customer Pricing System
+# MERI DIGITAL DUKAN ROS
 
 A lightweight business operations web application for small to medium retail and wholesale businesses. Inspired by the workflow of **Khatabook** and **Odoo 18**, adapted into a self-hosted, Dockerized web app.
 
