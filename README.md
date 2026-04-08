@@ -231,9 +231,3 @@ All endpoints are versioned at `/api/v1/`. Authentication uses JWT (Bearer token
 docker logs customer-pricing-backend-1 -f
 docker logs customer-pricing-frontend-1 -f
 ```
-
----
-
-## License
-
-[MIT](LICENSE)
